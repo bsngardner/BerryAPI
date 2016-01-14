@@ -125,8 +125,8 @@ void seed_rand() {
 	__no_operation();
 }
 
-#define WDT_HZ
-#define WDT_CTL WDT_MDLY_8
+#define WDT_CTL WDT_MDLY_32
+#define WDT_HZ 490
 
 inline void msp430_init(CLOCK_SPEED clock) {
 	WDTCTL = WDTPW + WDTHOLD;            // Stop watchdog
@@ -195,6 +195,8 @@ __interrupt void TIMER_A1_ISR(void) {
 	}
 }
 
+int WDT_sec_cnt = WDT_HZ;
+
 //------------------------------------------------------------------------------
 //	Watchdog Timer ISR
 //
@@ -209,12 +211,18 @@ __interrupt void WDT_ISR(void) {
 //			__bic_SR_register_on_exit(LPM3_bits);
 //		// Change sys_mode? TODO
 //	}
+//
+//	if (test(SW0)) {
+//		//set_register(SW0_REG, 1);
+//	} else {
+//		step = FIRST_STEP;
+//		//set_register(SW0_REG, 0);
+//	}
 
-	if (test(SW0)) {
-		//set_register(SW0_REG, 1);
-	} else {
+	if (--WDT_sec_cnt == 0) {
 		step = FIRST_STEP;
-		//set_register(SW0_REG, 0);
+		WDT_sec_cnt = WDT_HZ;
 	}
+
 	return;
 } // end WDT_ISR
