@@ -161,15 +161,13 @@ __interrupt void TIMER_A0_ISR(void) {
 				CCR1 = log_table[index];
 				break;
 			case 0x01:
-				CCR1 = 3 * (log_table[index] >> 2)
-						+ (log_table[index + 1] >> 2);
+				CCR1 = (3 * log_table[index] + log_table[index + 1]) >> 2;
 				break;
 			case 0x02:
-				CCR1 = (log_table[index] >> 1) + (log_table[index + 1] >> 1);
+				CCR1 = (log_table[index] + log_table[index + 1]) >> 1;
 				break;
 			case 0x03:
-				CCR1 = (log_table[index] >> 2)
-						+ 3 * (log_table[index + 1] >> 2);
+				CCR1 = (log_table[index] + 3 * log_table[index + 1]) >> 2;
 				break;
 			}
 
