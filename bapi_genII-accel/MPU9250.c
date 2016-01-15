@@ -8,25 +8,20 @@
 
 #include <msp430.h>
 #include <setjmp.h>
-#include "printf.h"
-#include "BDL.h"
 #include "MPU9250.h"
-
 #include "bb_i2c.h"
-#include "microSD.h"
-#include "events.h"
 
 extern jmp_buf i2c_context;				// error context
 
 /**
  *  @brief      Initialize hardware.
- *  Initial configuration:\n
- *  Gyro FSR: +/- 2000DPS\n
- *  Accel FSR +/- 2G\n
- *  DLPF: 42Hz\n
- *  FIFO rate: 50Hz\n
- *  Clock source: Gyro PLL\n
- *  FIFO: Disabled.\n
+ *  Initial configuration:
+ *  Gyro FSR: +/- 2000DPS
+ *  Accel FSR +/- 2G
+ *  DLPF: 42Hz
+ *  FIFO rate: 50Hz
+ *  Clock source: Gyro PLL
+ *  FIFO: Disabled.
  *  Data ready interrupt: Disabled, active low, unlatched.
  *  @param[in]  int_param   Platform-specific parameters to interrupt API.
  *  @return     0 if successful.
@@ -39,29 +34,41 @@ int MPU9250_init()
 	if (error = setjmp(i2c_context))
 		return error;
 
-	WDT_sleep(WDT_1SEC_CNT); // Sleep for 1 s
+	/* TODO: Sleep for 0.1 s.
+	 *
+	 * This was previously 1 s, but that was probably
+	 * more than needed. This delay is needed to allow the MPU9250 time to
+	 * bring up its serial comm unit. This was one of the first functions
+	 * called on the BDL, and without a delay here, I think it didn't start up
+	 * right. */
+	error = 1600;
+	while (error--)
+		__delay_cycles(1000);
 
 	// Reset device
 	data[0] = 0x06B; // pwr_mgmt_1
 	data[1] = BIT_RESET;
 	i2c_write(MPU9250_ADR, data, 2);
 
-	WDT_sleep(WDT_1SEC_CNT / 10); // Sleep for 100 ms
+	// TODO: Sleep for 0.1 s
+	error = 1600;
+	while (error--)
+		__delay_cycles(1000);
 
 	// Wake up chip
 	// Same register: data[0] = 0x06B;
 	data[1] = 0x00;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	// Set gyro full-scale range
 	data[0] = 0x1B; // gyro_cfg
 	data[1] = (INV_FSR_2000DPS << 3) | 0x03; // the 0x03 is to enable the LPF
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	// Set accelerometer full-scale range
 	data[0] = 0x1C; // accel_cfg
 	data[1] = INV_FSR_16G << 3;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	// Set digital low-pass filter for gyro
 	data[0] = 0x1A; // lpf
@@ -71,7 +78,7 @@ int MPU9250_init()
 	// Set sample rate to 1000 Hz
 	data[0] = 0x19; // rate_div
 	data[1] = 1000 / 1000 - 1;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 	// by default, the SDK would now overwrite the low-pass filter to be 20 Hz,
 	// but let's skip this for now...
 
@@ -83,20 +90,18 @@ int MPU9250_init()
 	// Disable data ready interrupt.
 	data[0] = 0x38; // int_enable
 	data[1] = 0; //BIT_DATA_RDY_EN;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	// There was the set_bypass here... but that was for offboard sensors, I think
 
 	// Configure sensors... enable gyro and don't disable accel
 	data[0] = 0x6B; // pwr_mgmt_1
 	data[1] = INV_CLK_PLL;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	data[0] = 0x6C; // pwr_mgmt_2
 	data[1] = 0x00;
-	i2c_write(MPU9250_ADR, data, 2);
-
-	WDT_sleep(WDT_1SEC_CNT / 20); // Sleep for 50 ms
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	return 0;
 }
@@ -114,7 +119,7 @@ int MPU9250_sleep()
 	// Reset device
 	data[0] = 0x06B; // pwr_mgmt_1
 	data[1] = BIT_SLEEP;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	return 0;
 }
@@ -190,7 +195,7 @@ void MPU9250_gyro_event()
 //
 uint8 MPU9250_read(uint8 regaddr, uint8 *buf, uint8 count)
 {
-	i2c_write(MPU9250_ADR, &regaddr, 1);
-	return i2c_read(MPU9250_ADR, buf, count);
+	bb_i2c_write(MPU9250_ADR, &regaddr, 1);
+	return bb_i2c_read(MPU9250_ADR, buf, count);
 }
 

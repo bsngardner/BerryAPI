@@ -11,10 +11,10 @@
 #define BB_I2C_H_
 
 // Public function prototypes
-uint8 i2c_init(void);
-void i2c_write(uint16 address, uint8* data, int16 bytes);
-uint8 i2c_read(uint16 address, uint8* buffer, int16 bytes);
-uint8 i2c_reg_read(uint16 address, uint8 reg, uint8* buffer, int16 bytes);
+uint8 bb_i2c_init(void);
+void bb_i2c_write(uint16 address, uint8* data, int16 bytes);
+uint8 bb_i2c_read(uint16 address, uint8* buffer, int16 bytes);
+uint8 bb_i2c_reg_read(uint16 address, uint8 reg, uint8* buffer, int16 bytes);
 
 //#define I2C_FSCL	100							// ~100kHz
 //#define I2C_FSCL	200							// ~200kHz

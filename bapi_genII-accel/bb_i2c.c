@@ -30,27 +30,27 @@
 #include "BDL.h"
 
 //******************************************************************************
-void i2c_clocklow(void);
-void i2c_clockhigh(void);
-void i2c_out_bit(uint8 bit);
-void i2c_start_address(uint16 address, uint8 rwFlag);
-void i2c_out_stop(void);
-int i2c_out8bits(uint8 c);
+void bb_i2c_clocklow(void);
+void bb_i2c_clockhigh(void);
+void bb_i2c_out_bit(uint8 bit);
+void bb_i2c_start_address(uint16 address, uint8 rwFlag);
+void bb_i2c_out_stop(void);
+int bb_i2c_out8bits(uint8 c);
 
 //******************************************************************************
 //	LCD Global variables (NOT ZERO'D!!!)
 //
-jmp_buf i2c_context;				// error context
-uint16 i2c_delay;
+jmp_buf bb_i2c_context;				// error context
+uint16 bb_i2c_delay;
 
 //******************************************************************************
 
-#define I2C_CLOCK_LOW		P1OUT &= ~SCL		// put clock low FIXME
-#define I2C_CLOCK_HIGH		P1OUT |= SCL		// put clock high FIXME
+#define BB_I2C_CLOCK_LOW		P1OUT &= ~SCL		// put clock low FIXME
+#define BB_I2C_CLOCK_HIGH		P1OUT |= SCL		// put clock high FIXME
 // driving the clock this way breaks clock stretching
 
-#define I2C_DATA_LOW		P1DIR |= SDA		// put data low
-#define I2C_DATA_HIGH		P1DIR &= ~SDA		// put data high (pull-up)
+#define BB_I2C_DATA_LOW		P1DIR |= SDA		// put data low
+#define BB_I2C_DATA_HIGH		P1DIR &= ~SDA		// put data high (pull-up)
 
 //******************************************************************************
 #define I2C_DELAY	0
@@ -216,7 +216,7 @@ void i2c_out_stop()
 
 //******************************************************************************
 //
-void i2c_write(uint16 address, uint8* data, int16 bytes)
+void bb_i2c_write(uint16 address, uint8* data, int16 bytes)
 {
 	int error;
 	i2c_start_address(address, 0);	// output write address
@@ -237,7 +237,7 @@ void i2c_write(uint16 address, uint8* data, int16 bytes)
 //			bytes	# of bytes to read
 //	OUT:	last byte read
 //
-uint8 i2c_read(uint16 address, uint8* buffer, int16 bytes)
+uint8 bb_i2c_read(uint16 address, uint8* buffer, int16 bytes)
 {
 	uint16 i, data;
 	i2c_start_address(address, 1);	// output read address
@@ -272,6 +272,6 @@ uint8 i2c_reg_read(uint16 address, uint8 reg, uint8* buffer, int16 bytes)
 
 	i2c_start_address(address, 0);
 	if (error = i2c_out8bits(reg)) longjmp(i2c_context, error);	//return error
-	return i2c_read(address, buffer, bytes);
+	return bb_i2c_read(address, buffer, bytes);
 
 }
