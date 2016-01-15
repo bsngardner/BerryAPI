@@ -11,7 +11,7 @@
 #include "MPU9250.h"
 #include "bb_i2c.h"
 
-extern jmp_buf i2c_context;				// error context
+extern jmp_buf bb_i2c_context;				// error context
 
 /**
  *  @brief      Initialize hardware.
@@ -31,7 +31,7 @@ int MPU9250_init()
 	unsigned char data[2];
 	int error;
 
-	if (error = setjmp(i2c_context))
+	if (error = setjmp(bb_i2c_context))
 		return error;
 
 	/* TODO: Sleep for 0.1 s.
