@@ -8,10 +8,14 @@
 #ifndef MPU9250_H_
 #define MPU9250_H_
 
+#include <stdint.h>
+
+#define MPU9250_ADR 0x68
+
 int MPU9250_init();
 void MPU9250_accel_event();
 void MPU9250_gyro_event();
-uint8 MPU9250_read(uint8 regaddr, uint8 *buf, uint8 count);
+uint8_t MPU9250_read(uint8_t regaddr, uint8_t *buf, uint8_t count);
 int MPU9250_sleep();
 
 
@@ -20,9 +24,9 @@ typedef union myXYZ			// X, Y, Z struct
 	unsigned char axis_data[6];
 	struct
 	{
-		int16 XX;			// little endian will swap axis_data[0 & 1]
-		int16 YY;			// little endian will swap axis_data[2 & 3]
-		int16 ZZ;			// little endian will swap axis_data[4 & 5]
+		int16_t XX;			// little endian will swap axis_data[0 & 1]
+		int16_t YY;			// little endian will swap axis_data[2 & 3]
+		int16_t ZZ;			// little endian will swap axis_data[4 & 5]
 	} xyz;
 } XYZ;
 

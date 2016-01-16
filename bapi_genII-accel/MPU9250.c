@@ -41,14 +41,14 @@ int MPU9250_init()
 	 * bring up its serial comm unit. This was one of the first functions
 	 * called on the BDL, and without a delay here, I think it didn't start up
 	 * right. */
-	error = 1600;
+	error = 16000;
 	while (error--)
 		__delay_cycles(1000);
 
 	// Reset device
 	data[0] = 0x06B; // pwr_mgmt_1
 	data[1] = BIT_RESET;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	// TODO: Sleep for 0.1 s
 	error = 1600;
@@ -73,7 +73,7 @@ int MPU9250_init()
 	// Set digital low-pass filter for gyro
 	data[0] = 0x1A; // lpf
 	data[1] = INV_FILTER_42HZ;
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	// Set sample rate to 1000 Hz
 	data[0] = 0x19; // rate_div
@@ -85,7 +85,7 @@ int MPU9250_init()
 	// Set up interrupt pin
 	data[0] = 0x37; // int pin
 	data[1] = 0xC0; // open-drain, active low
-	i2c_write(MPU9250_ADR, data, 2);
+	bb_i2c_write(MPU9250_ADR, data, 2);
 
 	// Disable data ready interrupt.
 	data[0] = 0x38; // int_enable
@@ -111,7 +111,7 @@ int MPU9250_sleep()
 	unsigned char data[2];
 	int error;
 
-	if (error = setjmp(i2c_context))
+	if (error = setjmp(bb_i2c_context))
 		return error;
 
 	//WDT_sleep(WDT_1SEC_CNT); // Sleep for 1 s
@@ -124,66 +124,6 @@ int MPU9250_sleep()
 	return 0;
 }
 
-void MPU9250_accel_event()
-{
-	int error;
-	XYZ XYZdata;
-	char pbuffer[32]; // WAY too big
-
-	XYZdata.xyz.XX = 0; // is this still necessary?
-	XYZdata.xyz.YY = 0;
-	XYZdata.xyz.ZZ = 0;
-
-	if (error = setjmp(i2c_context))
-	{
-		my_sprintf(pbuffer, "i2c error %d", error);
-	}
-	else
-	{
-		if (!(sys_event_enable & MPU9250A))
-			return;
-		MPU9250_read(0x3B /* raw_accel*/, XYZdata.axis_data, 6);
-		XYZdata.xyz.XX = _SWAP_BYTES(XYZdata.xyz.XX);
-		XYZdata.xyz.YY = _SWAP_BYTES(XYZdata.xyz.YY);
-		XYZdata.xyz.ZZ = _SWAP_BYTES(XYZdata.xyz.ZZ);
-		my_sprintf(pbuffer, "%d,%d,%d", XYZdata.xyz.XX, XYZdata.xyz.YY,
-				XYZdata.xyz.ZZ);
-	}
-	record_event('A', pbuffer);
-
-	return;
-}
-
-void MPU9250_gyro_event()
-{
-	int error;
-	XYZ XYZdata;
-	char pbuffer[32];
-
-	XYZdata.xyz.XX = 0;
-	XYZdata.xyz.YY = 0;
-	XYZdata.xyz.ZZ = 0;
-
-	if (error = setjmp(i2c_context))
-	{
-		my_sprintf(pbuffer, "i2c error %d", error);
-	}
-	else
-	{
-		if (!(sys_event_enable & MPU9250G))
-			return;
-		MPU9250_read(0x43 /*raw_gyro*/, XYZdata.axis_data, 6);
-		XYZdata.xyz.XX = _SWAP_BYTES(XYZdata.xyz.XX);
-		XYZdata.xyz.YY = _SWAP_BYTES(XYZdata.xyz.YY);
-		XYZdata.xyz.ZZ = _SWAP_BYTES(XYZdata.xyz.ZZ);
-		my_sprintf(pbuffer, "%d,%d,%d", XYZdata.xyz.XX, XYZdata.xyz.YY,
-				XYZdata.xyz.ZZ);
-	}
-	record_event('G', pbuffer);
-
-	return;
-}
-
 //******************************************************************************
 //	read multiple bytes from MPU9250 into buffer
 //
@@ -193,7 +133,7 @@ void MPU9250_gyro_event()
 //
 //		returns last byte read
 //
-uint8 MPU9250_read(uint8 regaddr, uint8 *buf, uint8 count)
+uint8_t MPU9250_read(uint8_t regaddr, uint8_t *buf, uint8_t count)
 {
 	bb_i2c_write(MPU9250_ADR, &regaddr, 1);
 	return bb_i2c_read(MPU9250_ADR, buf, count);

@@ -10,10 +10,12 @@
 #ifndef BB_I2C_H_
 #define BB_I2C_H_
 
+#include <stdint.h>
+
 // Public function prototypes
-uint8 bb_i2c_init(void);
-void bb_i2c_write(uint16 address, uint8* data, int16 bytes);
-uint8 bb_i2c_read(uint16 address, uint8* buffer, int16 bytes);
-uint8 bb_i2c_reg_read(uint16 address, uint8 reg, uint8* buffer, int16 bytes);
+uint8_t bb_i2c_init(void);
+void bb_i2c_write(unsigned address, uint8_t* data, int bytes);
+uint8_t bb_i2c_read(unsigned address, uint8_t* buffer, int bytes);
+uint8_t bb_i2c_reg_read(unsigned address, uint8_t reg, uint8_t* buffer, int bytes);
 
 #endif /* BB_I2C_H_ */

@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include "string.h"
 #include "usi_i2c.h"
+#include "bb_i2c.h"
+#include "MPU9250.h"
 
 //Typedef for clock speed adjustment
 typedef enum {
@@ -127,7 +129,16 @@ int main(void) {
 	registers.size = REG_TABLE_SIZE;
 	registers.current = DEFAULT_REG;
 
+	bb_i2c_init();
+	unsigned char data[1];
+	data[0] = 0xAA;
+	if (MPU9250_init())
+		while(1)
+			bb_i2c_write(0x66, data, 1);
+
 	__enable_interrupt();
+
+
 	while (1) {
 
 		LPM0;                              // CPU off, await USI interrupt
