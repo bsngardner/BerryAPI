@@ -46,6 +46,7 @@ static const int log_table[] = { 16384, 13653, 12056, 10923, 10044, 9325, 8718,
 #define LED2 3
 #define LED3 4
 #define LED4 5
+#define READ 6
 
 //Macros
 #define COND_BIT(bool,byte,mask) (byte ^= ((-bool) ^ (byte)) & (mask))
@@ -189,8 +190,11 @@ uint8_t get_current_register() {
 		registers.current++;
 		return registers.table[LED3];
 	case LED4:
-		registers.current++;
+		registers.current = LED1;
 		return registers.table[LED4];
+	case READ:
+		registers.table[READ] = rand() & (255);
+		return registers.table[READ];
 	case 15:
 		registers.current = 1;
 		break;
