@@ -211,18 +211,18 @@ __interrupt void WDT_ISR(void) {
 //			__bic_SR_register_on_exit(LPM3_bits);
 //		// Change sys_mode? TODO
 //	}
-//
-//	if (test(SW0)) {
-//		//set_register(SW0_REG, 1);
-//	} else {
-//		step = FIRST_STEP;
-//		//set_register(SW0_REG, 0);
-//	}
 
-	if (--WDT_sec_cnt == 0) {
+	if (test(SW0)) {
+		//set_register(SW0_REG, 1);
+	} else {
 		step = FIRST_STEP;
-		WDT_sec_cnt = WDT_HZ;
+		//set_register(SW0_REG, 0);
 	}
+
+//	if (--WDT_sec_cnt == 0) {
+//		step = FIRST_STEP;
+//		WDT_sec_cnt = WDT_HZ;
+//	}
 
 	return;
 } // end WDT_ISR

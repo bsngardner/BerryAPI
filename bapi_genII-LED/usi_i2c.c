@@ -128,8 +128,7 @@ __interrupt void USI_TXRX(void) {
 	static uint8_t cmd;
 	uint8_t addr;
 
-	if (USICTL1 & USISTTIFG)             // Start entry?
-	{
+	if (USICTL1 & USISTTIFG) {  // Start entry?
 		i2cState = I2C_START;                     // Enter 1st state on start
 	}
 
