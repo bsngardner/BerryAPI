@@ -24,7 +24,6 @@ inline void init_usi() {
 
 //P1OUT = 0xC0;                        // P1.6 & P1.7 Pullups
 //P1REN |= 0xC0;                       // P1.6 & P1.7 Pullups
-	P1DIR = 0xFF;                        // Unused pins as outputs
 
 	P1SEL |= SDA_PIN | SCL_PIN;
 	P1SEL2 &= ~(SDA_PIN | SCL_PIN);

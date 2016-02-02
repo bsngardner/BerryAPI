@@ -115,22 +115,13 @@ static const struct {
 #define REG_TABLE_SIZE 16
 
 #define SW0_REG 2
-
-#define SW0  0
-#define LED0 0
-#define LED1 1
-#define LED2 2
-
-//Macros
-#define set(num)	(*out_pins[num].PxOUT |= out_pins[num].bit)
-#define clear(num)	(*out_pins[num].PxOUT &= ~out_pins[num].bit)
-#define test(num)	(*in_pins[num].PxIN & in_pins[num].bit)
+#define SWPORT P1IN
+#define SW0  BIT0
+#define LED0 BIT6
 
 //Global variables
 volatile uint8_t table[REG_TABLE_SIZE];
 volatile register_table_t registers;
-
-//Variable externs
 
 //Function prototypes
 void port_init();
@@ -139,16 +130,6 @@ void seed_rand();
 
 #define COND_BIT(bool,byte,mask) (byte ^= ((-bool) ^ (byte)) & (mask))
 //Register table mapped to PxOUT
-const struct {
-	volatile unsigned char * PxOUT;
-	uint8_t bit;
-} out_pins[] = { { &P1OUT, BIT4 }, { &P2OUT, BIT7 }, { &P1OUT, BIT5 }, { 0, 0 },
-		{ 0, 0 } };
-
-const struct {
-	volatile unsigned char * PxIN;
-	uint8_t bit;
-} in_pins[] = { { &P2IN, BIT6 }, { 0, 0 } };
 
 //Main
 int main(void) {
@@ -162,23 +143,6 @@ int main(void) {
 	registers.table[0] = 0x06;
 	registers.size = REG_TABLE_SIZE;
 	registers.current = DEFAULT_REG;
-
-//
-//	static int i = 0;
-//	static const struct {
-//		uint8_t P1;
-//		uint8_t P2;
-//	} states[] = { { BIT5, 0 }, { 0, BIT6 }, { 0, BIT7 } };
-//
-//	while (1) {
-//		P1OUT &= ~BIT5;
-//		P2OUT &= ~P2LEDS;
-//		P1OUT |= states[i].P1;
-//		P2OUT |= states[i].P2;
-//		if (++i > 2)
-//			i = 0;
-//		__delay_cycles(500000);
-//	}
 
 	__enable_interrupt();
 
@@ -207,19 +171,13 @@ void set_current_register(uint8_t value) {
 	case 1:	//Status register
 
 		break;
-	case 2:	//LED 1
-		registers.table[2] = value;
-		COND_BIT(value, *out_pins[2].PxOUT, out_pins[2].bit);
+	case 2:
 		registers.current++;
 		break;
-	case 3:	//LED 2
-		registers.table[3] = value;
-		COND_BIT(value, *out_pins[3].PxOUT, out_pins[3].bit);
+	case 3:
 		registers.current++;
 		break;
-	case 4:	//LED 3
-		registers.table[4] = value;
-		COND_BIT(value, *out_pins[4].PxOUT, out_pins[4].bit);
+	case 4:
 		registers.current++;
 		break;
 	case 15:
@@ -237,9 +195,8 @@ uint8_t get_current_register() {
 		return registers.table[0];
 	case 1:	//Status register
 		return registers.table[1];
-	case 2:	//LED 1
-		registers.current++;
-		return registers.table[2];
+	case SW0_REG:	//SW0_REG
+		return registers.table[SW0_REG];
 	case 3:	//LED 2
 		registers.current++;
 		return registers.table[2];
@@ -259,24 +216,19 @@ inline uint8_t get_register(uint8_t reg) {
 	return registers.table[reg];
 }
 
-inline void set_register(uint8_t reg, uint8_t value) {
+void set_register(uint8_t reg, uint8_t value) {
 	registers.table[reg] = value;
 }
 
 inline void port_init() {
+	P1OUT = 0;
+	P1DIR = ~SW0;
+	P1OUT = SW0;
+	P1REN = SW0;
 
-	P1SEL &= ~(BIT4 | BIT5);
-	P1SEL2 &= ~(BIT4 | BIT5);
-	P1DIR |= (BIT4 | BIT5);
-
-	P2SEL &= ~(BIT7 | BIT6);
-	P2SEL2 &= ~(BIT7 | BIT6);
-	P2DIR |= BIT7;
-	P2DIR &= ~BIT6;
-
-	P1OUT = BIT4;
-	P2OUT = BIT6;
-	P2REN = BIT6;
+	P2SEL = P2SEL2 = P1SEL = P1SEL2 = 0;
+	P2DIR |= LED0;
+	P2OUT = LED0;
 
 }
 
@@ -300,6 +252,7 @@ inline void msp430_init(CLOCK_SPEED clock) {
 	IE1 |= WDTIE;					// Enable WDT interrupt
 }
 
+#define test(byte,bit) (byte & bit)
 //------------------------------------------------------------------------------
 //	Watchdog Timer ISR
 //
@@ -314,13 +267,9 @@ __interrupt void WDT_ISR(void) {
 //			__bic_SR_register_on_exit(LPM3_bits);
 //		// Change sys_mode? TODO
 //	}
-	if (!test(SW0)) {
-		set(LED1);
-		set(LED2);
+	if (!test(SWPORT, SW0)) {
 		set_register(SW0_REG, 1);
 	} else {
-		clear(LED1);
-		clear(LED2);
 		set_register(SW0_REG, 0);
 	}
 	return;

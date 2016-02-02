@@ -22,10 +22,6 @@ inline uint16_t sample_temp();
 
 inline void init_usi() {
 
-//P1OUT = 0xC0;                        // P1.6 & P1.7 Pullups
-//P1REN |= 0xC0;                       // P1.6 & P1.7 Pullups
-	P1DIR = 0xFF;                        // Unused pins as outputs
-
 	P1SEL |= SDA_PIN | SCL_PIN;
 	P1SEL2 &= ~(SDA_PIN | SCL_PIN);
 
@@ -125,140 +121,140 @@ __interrupt void USI_TXRX(void) {
 #error Compiler not supported!
 #endif
 
-	static uint8_t byte_count = 0;
-	static uint8_t cmd;
-	uint8_t addr;
+static uint8_t byte_count = 0;
+static uint8_t cmd;
+uint8_t addr;
 
-	if (USICTL1 & USISTTIFG)             // Start entry?
-	{
-		i2cState = I2C_START;                     // Enter 1st state on start
-	}
+if (USICTL1 & USISTTIFG)             // Start entry?
+{
+	i2cState = I2C_START;                     // Enter 1st state on start
+}
 
-	switch (__even_in_range(i2cState, 22)) {
+switch (__even_in_range(i2cState, 22)) {
 	case I2C_IDLE: // 0 Idle, should not get here
-		break;
+	break;
 
-	case I2C_START: // 2 RX Address
-		USICNT = (USICNT & 0xE0) + 0x08; // Bit counter = 8, RX address
-		USICTL1 &= ~USISTTIFG; // Clear start flag
-		i2cState = I2C_ADDR; // Go to next state: check address
-		break;
+	case I2C_START:// 2 RX Address
+	USICNT = (USICNT & 0xE0) + 0x08;// Bit counter = 8, RX address
+	USICTL1 &= ~USISTTIFG;// Clear start flag
+	i2cState = I2C_ADDR;// Go to next state: check address
+	break;
 
-	case I2C_ADDR: // 4 Process Address and send (N)Ack
-		addr = USISRL >> 1;
-		if (addr == GEN_CALL || addr == slave_addr) {
-			byte_count = 0;
-			global_addr = !USISRL;
-			if (USISRL & BIT0) {
-				i2cState = I2C_TX;
-			} else {
-				i2cState = I2C_RX;         // Go to next state: RX data
-			}
-			send_ack
-			;
+	case I2C_ADDR:// 4 Process Address and send (N)Ack
+	addr = USISRL >> 1;
+	if (addr == GEN_CALL || addr == slave_addr) {
+		byte_count = 0;
+		global_addr = !USISRL;
+		if (USISRL & BIT0) {
+			i2cState = I2C_TX;
 		} else {
-			USICNT |= USISCLREL;
-			i2cState = I2C_RESET;		// Go to next state: prep for next Start
-			send_nack
-			;
+			i2cState = I2C_RX;         // Go to next state: RX data
 		}
-		break;
-	case I2C_READ_STOP:
-		if (USICTL1 & USISTP) {	//Stop bit, reset
-			SDA_IN; // SDA = input
-			i2cState = I2C_IDLE;		// Reset state machine
-			break;
-		}
-	case I2C_RX:
-		// 8 Receive data byte
-		SDA_IN;		// SDA = input
-		USICNT |= 0x08;		// Bit counter = 8, RX data
-		if (global_addr)
-			i2cState = I2C_HANDLE_GLOBAL;// Go to next state: Test data and (N)Ack
-		else
-			i2cState = I2C_HANDLE_RX;
-		break;
-	case I2C_HANDLE_RX:
-		// 10 Check Data & TX (N)Ack
-		byte_count++;
-		if (byte_count == 1) {
-			registers.current = USISRL;
-		} else {
-			set_current_register(USISRL);
-		}
-		i2cState = I2C_READ_STOP;
-		USICTL1 &= ~USISTP;
 		send_ack
 		;
+	} else {
+		USICNT |= USISCLREL;
+		i2cState = I2C_RESET;		// Go to next state: prep for next Start
+		send_nack
+		;
+	}
+	break;
+	case I2C_READ_STOP:
+	if (USICTL1 & USISTP) {	//Stop bit, reset
+		SDA_IN;// SDA = input
+		i2cState = I2C_IDLE;// Reset state machine
 		break;
+	}
+	case I2C_RX:
+	// 8 Receive data byte
+	SDA_IN;// SDA = input
+	USICNT |= 0x08;// Bit counter = 8, RX data
+	if (global_addr)
+	i2cState = I2C_HANDLE_GLOBAL;// Go to next state: Test data and (N)Ack
+	else
+	i2cState = I2C_HANDLE_RX;
+	break;
+	case I2C_HANDLE_RX:
+	// 10 Check Data & TX (N)Ack
+	byte_count++;
+	if (byte_count == 1) {
+		registers.current = USISRL;
+	} else {
+		set_current_register(USISRL);
+	}
+	i2cState = I2C_READ_STOP;
+	USICTL1 &= ~USISTP;
+	send_ack
+	;
+	break;
 	case I2C_HANDLE_GLOBAL:
-		byte_count++;
-		if (byte_count == 1) {
-			cmd = USISRL;
-		}
-		switch (cmd) {
+	byte_count++;
+	if (byte_count == 1) {
+		cmd = USISRL;
+	}
+	switch (cmd) {
 		case NEW_ADDR:
-			if (slave_addr) {
-				send_nack
-				;
-				i2cState = I2C_RESET;
-				break;
-			} else {
-				if (byte_count == 1) {
-					send_ack
-					;
-					i2cState = I2C_RX;
-					break;
-				} else if (byte_count == 2) {
-					if (arbitration()) {
-						slave_addr = USISRL;
-						send_ack
-						;
-					} else {
-						send_nack
-						;
-					}
-					i2cState = I2C_RESET;
-					break;
-				}
-			}
-			break;
-		case RESET_ALL:
-			slave_addr = 0;
-			send_ack
+		if (slave_addr) {
+			send_nack
 			;
 			i2cState = I2C_RESET;
 			break;
+		} else {
+			if (byte_count == 1) {
+				send_ack
+				;
+				i2cState = I2C_RX;
+				break;
+			} else if (byte_count == 2) {
+				if (arbitration()) {
+					slave_addr = USISRL;
+					send_ack
+					;
+				} else {
+					send_nack
+					;
+				}
+				i2cState = I2C_RESET;
+				break;
+			}
+		}
+		break;
+		case RESET_ALL:
+		slave_addr = 0;
+		send_ack
+		;
+		i2cState = I2C_RESET;
+		break;
 		default:
-			break;
-		}
-		break;
-	case I2C_HANDLE_NACK:	//Moved here to enable fall through to tx code
-		if (USISRL & BIT0) {	//NACK
-			SDA_IN; // SDA = input
-			i2cState = I2C_IDLE;		// Reset state machine
-			break;
-		}
-		//ACK: fall through to transmit another byte
-	case I2C_TX:
-		SDA_OUT;
-		USISRL = get_current_register();
-		USICNT |= 0x08;
-		i2cState = I2C_RX_NACK;
-		break;
-	case I2C_RX_NACK:
-		SDA_IN;
-		USICNT |= 0x01;
-		i2cState = I2C_HANDLE_NACK;
-		break;
-	case I2C_RESET:
-		SDA_IN; // SDA = input
-		i2cState = I2C_IDLE;		// Reset state machine
-		break;
-	default:
 		break;
 	}
+	break;
+	case I2C_HANDLE_NACK:	//Moved here to enable fall through to tx code
+	if (USISRL & BIT0) {	//NACK
+		SDA_IN;// SDA = input
+		i2cState = I2C_IDLE;// Reset state machine
+		break;
+	}
+	//ACK: fall through to transmit another byte
+	case I2C_TX:
+	SDA_OUT;
+	USISRL = get_current_register();
+	USICNT |= 0x08;
+	i2cState = I2C_RX_NACK;
+	break;
+	case I2C_RX_NACK:
+	SDA_IN;
+	USICNT |= 0x01;
+	i2cState = I2C_HANDLE_NACK;
+	break;
+	case I2C_RESET:
+	SDA_IN;// SDA = input
+	i2cState = I2C_IDLE;// Reset state machine
+	break;
+	default:
+	break;
+}
 
-	USICTL1 &= ~USIIFG;                  // Clear pending flags
+USICTL1 &= ~USIIFG;                  // Clear pending flags
 }
 
