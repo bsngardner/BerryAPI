@@ -5,25 +5,50 @@
  *      Author: Broderick
  */
 
-#include "usi_i2c.h"
 #include "msp430.h"
+#include "bapi.h"
+#include "usi_i2c.h"
 #include <stdlib.h>
+
+//enum
+typedef enum {
+	I2C_IDLE = 0,
+	I2C_START = 2,
+	I2C_ADDR = 4,
+	I2C_RX = 6,
+	I2C_HANDLE_RX = 8,
+	I2C_HANDLE_GLOBAL = 10,
+	I2C_READ_STOP = 12,
+	I2C_TX = 14,
+	I2C_RX_NACK = 16,
+	I2C_HANDLE_NACK = 18,
+	I2C_RESET = 20
+} i2c_state_t;
+
+//Defines
+#define GEN_CALL 0x00
+#define NEW_ADDR 0x00
+#define RESET_ALL 0x01
 
 //Macros
 #define SDA_OUT USICTL0 |= USIOE
 #define SDA_IN USICTL0 &= ~USIOE
 #define SDA_READ (P1IN & SDA_PIN)
+#define send_ack SDA_OUT; USISRL = 0x00; USICNT |= 0x01// Bit counter = 1, send Ack bit
+#define send_nack SDA_IN; USISRL = 0xFF; USICNT |= 0x01// Bit counter = 1, send NAck bit
 
 //Global variables
+
+//Static variables
+volatile static i2c_state_t i2cState = I2C_IDLE;  // State variable
+volatile static uint8_t slave_addr = 0;
+static uint8_t global_addr = 0;
 
 //Local prototypes
 inline void temp_init();
 inline uint16_t sample_temp();
 
 inline void init_usi() {
-
-//P1OUT = 0xC0;                        // P1.6 & P1.7 Pullups
-//P1REN |= 0xC0;                       // P1.6 & P1.7 Pullups
 
 	P1SEL |= SDA_PIN | SCL_PIN;
 	P1SEL2 &= ~(SDA_PIN | SCL_PIN);
@@ -40,23 +65,7 @@ inline void init_usi() {
 	USICNT |= USIIFGCC;                  // Disable automatic clear control
 	USICTL0 &= ~USISWRST;                // Enable USI
 	USICTL1 &= ~USIIFG;                  // Clear pending flag
-//
-//	rxBuffer = IObuffer_create(IOBUFFER_SIZE);
-//	rxBuffer->bytes_ready = callback;
-	TA0CTL |= TASSEL_2 | ID_0 | MC_1;
-	TA0CCTL0 = 0;
-	TA0CCTL0 |= CCIE;
-}
 
-inline void temp_init() {
-	ADC10CTL1 = ADC10DIV_0 + INCH_10 + SHS_0 + CONSEQ_2;  // TA trig., rpt, A10
-	ADC10CTL0 = SREF_1 + ADC10SHT_0 + REF2_5V + REFON + REFBURST + ADC10ON;
-	ADC10CTL0 |= ENC | ADC10SC;
-}
-inline uint16_t sample_temp() {
-	ADC10CTL0 |= ADC10SC;
-	__delay_cycles(100);
-	return ADC10MEM;
 }
 
 inline void set_io_pin() {
@@ -73,15 +82,6 @@ inline reset_i2c_pin() {
 	P1SEL2 &= ~SDA_PIN;
 	return;
 }
-
-#define DEBUGMODE
-#ifdef DEBUGMODE
-#define dbg_light	P1OUT ^= BIT4
-#define dbg_light_set	P1OUT |= BIT4
-#else
-#define dbg_light
-#define dbg_light_set
-#endif
 
 static volatile uint8_t i2c_sleep;
 inline uint16_t arbitration() {
@@ -101,16 +101,6 @@ inline uint16_t arbitration() {
 	reset_i2c_pin();
 	return (P1DIR & SDA_PIN) ? 1 : 0;
 }
-
-#define GEN_CALL 0x00
-#define NEW_ADDR 0x00
-#define RESET_ALL 0x01
-#define send_ack SDA_OUT; USISRL = 0x00; USICNT |= 0x01// Bit counter = 1, send Ack bit
-#define send_nack SDA_IN; USISRL = 0xFF; USICNT |= 0x01// Bit counter = 1, send NAck bit
-//Static variables
-volatile static i2c_state_t i2cState = I2C_IDLE;  // State variable
-volatile static uint8_t slave_addr = 0;
-static char global_addr = 0;
 
 //******************************************************************************
 // USI interrupt service routine
@@ -181,9 +171,9 @@ __interrupt void USI_TXRX(void) {
 		// 10 Check Data & TX (N)Ack
 		byte_count++;
 		if (byte_count == 1) {
-			registers.current = USISRL;
+			reg_table.current = USISRL;
 		} else {
-			set_current_register(USISRL);
+			set_register(USISRL);
 		}
 		i2cState = I2C_READ_STOP;
 		USICTL1 &= ~USISTP;
@@ -240,7 +230,7 @@ __interrupt void USI_TXRX(void) {
 		//ACK: fall through to transmit another byte
 	case I2C_TX:
 		SDA_OUT;
-		USISRL = get_current_register();
+		USISRL = get_register();
 		USICNT |= 0x08;
 		i2cState = I2C_RX_NACK;
 		break;

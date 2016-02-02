@@ -91,24 +91,12 @@
 
 #include <msp430.h>
 #include <stdint.h>
-#include <stdlib.h>
+//#include <stdlib.h>
 #include "string.h"
-#include "usi_i2c.h"
 
 //Global defines
 #define P2LEDS (BIT6|BIT7)
 
-//Typedef for clock speed adjustment
-typedef enum {
-	_1MHZ, _8MHZ, _12MHZ, _16MHZ
-} CLOCK_SPEED;
-
-//8 bytes
-static const struct {
-	volatile unsigned char* calbc1;
-	volatile unsigned char* caldco;
-} dco_cal[] = { { &CALBC1_1MHZ, &CALDCO_1MHZ }, { &CALBC1_8MHZ, &CALDCO_8MHZ },
-		{ &CALBC1_12MHZ, &CALDCO_12MHZ }, { &CALBC1_16MHZ, &CALDCO_16MHZ } };
 
 //Defines
 #define DEFAULT_REG 2
@@ -151,16 +139,6 @@ int main(void) {
 		__no_operation();                  // Used for IAR
 
 	}
-}
-void seed_rand() {
-	int16_t seed;
-	int16_t random[16];
-	int i = 16;
-	while (i-- > 0) {
-		seed ^= random[i];
-	}
-	srand(seed);
-	__no_operation();
 }
 
 void set_current_register(uint8_t value) {
@@ -220,37 +198,6 @@ void set_register(uint8_t reg, uint8_t value) {
 	registers.table[reg] = value;
 }
 
-inline void port_init() {
-	P1OUT = 0;
-	P1DIR = ~SW0;
-	P1OUT = SW0;
-	P1REN = SW0;
-
-	P2SEL = P2SEL2 = P1SEL = P1SEL2 = 0;
-	P2DIR |= LED0;
-	P2OUT = LED0;
-
-}
-
-#define WDT_HZ
-#define WDT_CTL WDT_MDLY_8
-
-inline void msp430_init(CLOCK_SPEED clock) {
-	WDTCTL = WDTPW + WDTHOLD;            // Stop watchdog
-	if (*dco_cal[clock].calbc1 == 0xFF)   // If calibration constants erased
-			{
-		while (1)
-			;                          // do not load, trap CPU!!
-	}
-
-	DCOCTL = 0;                      // Select lowest DCOx and MODx settings
-	BCSCTL1 = *dco_cal[clock].calbc1;                          // Set DCO
-	DCOCTL = *dco_cal[clock].caldco;
-
-	// configure Watchdog
-	WDTCTL = WDT_CTL;					// Set Watchdog interval
-	IE1 |= WDTIE;					// Enable WDT interrupt
-}
 
 #define test(byte,bit) (byte & bit)
 //------------------------------------------------------------------------------
