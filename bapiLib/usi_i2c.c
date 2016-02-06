@@ -44,20 +44,13 @@ volatile static i2c_state_t i2cState = I2C_IDLE;  // State variable
 volatile static uint8_t slave_addr = 0;
 static uint8_t global_addr = 0;
 
-//Local prototypes
-inline void temp_init();
-inline uint16_t sample_temp();
-
-inline void init_usi() {
+inline void usi_init() {
 
 	P1SEL |= SDA_PIN | SCL_PIN;
 	P1SEL2 &= ~(SDA_PIN | SCL_PIN);
 
 	P1DIR &= ~SDA_PIN;
 	P1OUT &= ~SDA_PIN;
-	P1IES = SDA_PIN;
-	P1IE = SDA_PIN;
-	P1IFG = 0;
 
 	USICTL0 = USIPE6 + USIPE7 + USISWRST;    // Port & USI mode setup
 	USICTL1 = USII2C + USIIE + USISTTIE;     // Enable I2C mode & USI interrupts
@@ -102,6 +95,14 @@ inline uint16_t arbitration() {
 	return (P1DIR & SDA_PIN) ? 1 : 0;
 }
 
+static int timeout_cnt = 0;
+
+inline void check_timeout() {
+	if (timeout_cnt && !(--timeout_cnt)) {
+		i2cState = I2C_IDLE;
+	}
+}
+
 //******************************************************************************
 // USI interrupt service routine
 //******************************************************************************
@@ -117,6 +118,8 @@ __interrupt void USI_TXRX(void) {
 	static uint8_t byte_count = 0;
 	static uint8_t cmd;
 	uint8_t addr;
+
+	timeout_cnt = USI_TIMEOUT;
 
 	if (USICTL1 & USISTTIFG)             // Start entry?
 	{

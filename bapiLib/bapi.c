@@ -7,14 +7,13 @@
 
 #include "msp430.h"
 #include "bapi.h"
-#include "bapi.h"
 #include <stdlib.h>
 #include "usi_i2c.h"
 
 //Prototypes
 void seed_rand();
 void msp430_init(CLOCK_SPEED clock);
-void port_init();
+void gpio_port_init();
 
 //Constants for clock speed init
 static const struct {
@@ -34,10 +33,35 @@ register_table_t reg_table = { regs, TABLE_SIZE };
 int bapi_init(CLOCK_SPEED clock, uint8_t device_type) {
 	seed_rand();
 	msp430_init(clock);
-	port_init();
-	init_usi();
+	gpio_port_init();
+	usi_init();
 	reg_table.table[0] = device_type;
 	return 0;
+}
+
+void set_reg(uint8_t value) {
+	switch (reg_table.current) {
+	case 0:
+		break;
+	case 1:
+		reg_table.table[1] = value;
+		break;
+	default:
+		set_register(value);
+		break;
+	}
+	return;
+}
+
+uint8_t get_reg() {
+	switch (reg_table.current) {
+	case 0:
+		return reg_table.table[0];
+	case 1:
+		return reg_table.table[1];
+	default:
+		return get_register();
+	}
 }
 
 inline void msp430_init(CLOCK_SPEED clock) {
@@ -57,7 +81,7 @@ inline void msp430_init(CLOCK_SPEED clock) {
 	IE1 |= WDTIE;					// Enable WDT interrupt
 }
 
-inline void port_init() {
+inline void gpio_port_init() {
 	P1OUT = P2OUT = 0;
 	P2SEL = P2SEL2 = P1SEL = P1SEL2 = 0;
 	P1DIR = P2DIR = 0xFF;

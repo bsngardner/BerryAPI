@@ -15,7 +15,7 @@
 #define SCL_PIN BIT6
 
 //Prototypes
-void init_usi();
+void usi_init();
 
 //Extern functions
 extern void set_register(uint8_t value);

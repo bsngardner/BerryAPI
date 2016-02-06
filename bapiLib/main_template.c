@@ -58,3 +58,14 @@ uint8_t get_register() {
 	}
 	return 0;
 }
+
+//------------------------------------------------------------------------------
+//	Watchdog Timer ISR
+//
+#pragma vector = WDT_VECTOR
+__interrupt void WDT_ISR(void) {
+	check_timeout();
+
+
+	return;
+} // end WDT_ISR
