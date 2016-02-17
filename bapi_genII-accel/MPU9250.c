@@ -28,12 +28,6 @@ extern jmp_buf bb_i2c_context;				// error context
  */
 int MPU9250_init()
 {
-	unsigned char data[2];
-	int error;
-
-	if (error = setjmp(bb_i2c_context))
-		return error;
-
 	/* TODO: Sleep for 0.1 s.
 	 *
 	 * This was previously 1 s, but that was probably
@@ -42,100 +36,137 @@ int MPU9250_init()
 	 * called on the BDL, and without a delay here, I think it didn't start up
 	 * right. */
 	error = 16000;
-	while (error--)
+	do
 		__delay_cycles(1000);
+	while (--error);
 
 	// Reset device
-	data[0] = 0x06B; // pwr_mgmt_1
-	data[1] = BIT_RESET;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x6B /*pwr_mgmt_1*/, BIT_RESET);
 
 	// TODO: Sleep for 0.1 s
 	error = 1600;
-	while (error--)
+	do
 		__delay_cycles(1000);
+	while (--error);
 
 	// Wake up chip
-	// Same register: data[0] = 0x06B;
-	data[1] = 0x00;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x6B /*pwr_mgmt_1*/, 0);
 
 	// Set gyro full-scale range
-	data[0] = 0x1B; // gyro_cfg
-	data[1] = (INV_FSR_2000DPS << 3) | 0x03; // the 0x03 is to enable the LPF
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x1B /*gyro_cfg*/, (INV_FSR_2000DPS << 3) | 0x03);
+	// the 0x03 is to enable the LPF
 
 	// Set accelerometer full-scale range
-	data[0] = 0x1C; // accel_cfg
-	data[1] = INV_FSR_16G << 3;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x1C /*accel_cfg*/, INV_FSR_16G << 3);
 
 	// Set digital low-pass filter for gyro
-	data[0] = 0x1A; // lpf
-	data[1] = INV_FILTER_42HZ;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x1A /*lpf*/, INV_FILTER_42HZ);
 
 	// Set sample rate to 1000 Hz
-	data[0] = 0x19; // rate_div
-	data[1] = 1000 / 1000 - 1;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x19; /*rate_div*/, 1000 / 1000 - 1);
 	// by default, the SDK would now overwrite the low-pass filter to be 20 Hz,
 	// but let's skip this for now...
 
 	// Set up interrupt pin
-	data[0] = 0x37; // int pin
-	data[1] = 0xC0; // open-drain, active low
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x37 /*int pin*/, 0xC0); // open-drain, active low
 
 	// Disable data ready interrupt.
-	data[0] = 0x38; // int_enable
-	data[1] = 0; //BIT_DATA_RDY_EN;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x38 /*int_enable*/, 0); //BIT_DATA_RDY_EN;
 
-	// There was the set_bypass here... but that was for offboard sensors, I think
+	// There was the set_bypass here... but that was for offboard sensors
 
 	// Configure sensors... enable gyro and don't disable accel
-	data[0] = 0x6B; // pwr_mgmt_1
-	data[1] = INV_CLK_PLL;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x6B /*pwr_mgmt_1*/, INV_CLK_PLL);
 
-	data[0] = 0x6C; // pwr_mgmt_2
-	data[1] = 0x00;
-	bb_i2c_write(MPU9250_ADR, data, 2);
+	MPU9250_write(0x6C /*pwr_mgmt_2*/, 0);
 
 	return 0;
 }
+
 
 int MPU9250_sleep()
 {
-	unsigned char data[2];
-	int error;
-
-	if (error = setjmp(bb_i2c_context))
-		return error;
-
-	//WDT_sleep(WDT_1SEC_CNT); // Sleep for 1 s
-
 	// Reset device
-	data[0] = 0x06B; // pwr_mgmt_1
-	data[1] = BIT_SLEEP;
-	bb_i2c_write(MPU9250_ADR, data, 2);
-
+	MPU9250_write(0x06B /*pwr_mgmt_1*/, BIT_SLEEP);
 	return 0;
 }
+
+
+void MPU9250_get_raw_values()
+{
+	XYZ XYZdata;
+
+	XYZdata.xyz.XX = 0; // is this still necessary?
+	XYZdata.xyz.YY = 0;
+	XYZdata.xyz.ZZ = 0;
+
+	MPU9250_read(0x3B /* raw_accel*/, XYZdata.axis_data, 6);
+	XYZdata.xyz.XX = _SWAP_BYTES(XYZdata.xyz.XX);
+	XYZdata.xyz.YY = _SWAP_BYTES(XYZdata.xyz.YY);
+	XYZdata.xyz.ZZ = _SWAP_BYTES(XYZdata.xyz.ZZ);
+
+	MPU9250_read(0x43 /*raw_gyro*/, XYZdata.axis_data, 6);
+	XYZdata.xyz.XX = _SWAP_BYTES(XYZdata.xyz.XX);
+	XYZdata.xyz.YY = _SWAP_BYTES(XYZdata.xyz.YY);
+	XYZdata.xyz.ZZ = _SWAP_BYTES(XYZdata.xyz.ZZ);
+
+	return;
+}
+
+
+//******************************************************************************
+//	write one byte to MPU9250 from buffer
+//
+//		regaddr = mpu9250 register (must be < 128)
+//		   data = value to write
+//
+//		returns last byte read
+//
+void MPU9250_write(uint8_t regaddr, uint8_t data)
+{
+	bb_spi_assert_csel();
+	bb_spi_write(regaddr);
+	bb_spi_write(data);
+	bb_spi_release_csel();
+	return;
+}
+
 
 //******************************************************************************
 //	read multiple bytes from MPU9250 into buffer
 //
 //		regaddr = mpu9250 register
-//		    buf = pointer to buffer
+//		    buf = pointer to buffer, or 0 to get value from return
 //		  count = # of bytes to read
 //
 //		returns last byte read
 //
 uint8_t MPU9250_read(uint8_t regaddr, uint8_t *buf, uint8_t count)
 {
-	bb_i2c_write(MPU9250_ADR, &regaddr, 1);
-	return bb_i2c_read(MPU9250_ADR, buf, count);
+	uint8_t val;
+
+	// Assert chip select
+	bb_spi_assert_csel();
+
+	// Write register address
+	bb_spi_write(0x80+regaddr);		// First bit is to read
+
+	// If buf is null, just return one byte
+	if (!buf) {
+		val = bb_spi_read();
+		bb_spi_release_csel();
+		return val;
+	}
+
+	// Otherwise, copy the bytes into buf
+	do
+		*buf++ = bb_spi_read();
+	while (--count > 0);
+
+	// Release chip select
+	bb_spi_release();
+
+	// Return the last value read
+	return *(buf-1);
 }
 

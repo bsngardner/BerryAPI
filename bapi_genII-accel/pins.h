@@ -9,8 +9,10 @@
 #define PINS_H_
 
 // Port 1
-#define BB_I2C_SCL_PIN			BIT1
-#define BB_I2C_SDA_PIN			BIT0
+#define BB_SPI_SCLK		BIT0		// Clock
+#define BB_SPI_MOSI		BIT2		// Master out slave in
+#define BB_SPI_MISO		BIT4		// Master in slave out
+#define BB_SPI_CSEL		BIT1		// Chip select
 
 
 #endif /* PINS_H_ */

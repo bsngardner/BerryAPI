@@ -1,5 +1,14 @@
+<<<<<<< HEAD
 Debug/
 .settings/
 .launches/
 Releases/
 targetConfigs
+=======
+Debug/
+.settings/
+.launches/
+Releases/
+targetConfigs
+.DS_Store
+>>>>>>> refs/remotes/origin/master
