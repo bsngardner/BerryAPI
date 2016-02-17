@@ -219,6 +219,7 @@ __interrupt void USI_TXRX(void) {
 			slave_addr = 0;
 			send_ack
 			;
+			i2cState = I2C_RESET;
 			break;
 		default:
 			break;

@@ -48,7 +48,7 @@ volatile int speed;
 //IO port init function
 inline void port_init() {
 	P1DIR |= (L1 | L2 | L3 | L4);
-	P1OUT |= (L1 | L2 | L3 | L4);
+	P1OUT |= ( L2 | L3);
 
 	P2OUT |= L0;
 }
