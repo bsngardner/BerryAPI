@@ -9,6 +9,5 @@
 	<linkerCommandFile value="lnk_msp430g2332.cmd"/>
 	<rts value="libc.a"/>
 	<createSlaveProjects value=""/>
-	<templateProperties value="id=com.ti.common.project.core.emptyProjectWithMainTemplate_msp430,"/>
-	<isTargetManual value="true"/>
+	<templateProperties value="id=com.ti.common.project.core.emptyProjectTemplate,"/>
 </projectOptions>
