@@ -15,7 +15,7 @@
 
 int spi_init(void);
 uint8_t spi_transfer(uint8_t byte);
-void spi_send(uint8_t);
-uint8_t spi_receive(void);
+void spi_write(uint8_t);
+uint8_t spi_read(void);
 
 #endif /* BB_SPI_H_ */

@@ -11,146 +11,107 @@
 #include <stdint.h>
 #include "pins.h"
 
-#define SPI_DELAY		{ volatile int delay = spi_delay; while (--delay); }
-#define SPI_MODE	0
+#define BB_SPI_DELAY	__delay_cycles(spi_delay)
+#define BB_SPI_CPOL		1
+#define BB_SPI_CPHA		1
 
-uint16 spi_delay;
+const uint16 spi_delay = 1;	// Hard to tell with cycle counts...
 
 int spi_init(void)
 {
-	P1DIR |= CS_SD | MOSI | SCLK;
-	P1DIR &= ~MISO;
-	P1OUT |= CS_SD | MOSI;
-	P1OUT &= ~SCLK;
-	spi_delay = 1;
+	P1DIR |= BB_SPI_CSEL | BB_SPI_MOSI | BB_SPI_SCLK;
+	P1DIR &= ~BB_SPI_MISO;
+#if BB_SPI_CPOL==1
+	P1OUT |= BB_SPI_CSEL | BB_SPI_MOSI | BB_SPI_SLCK;
+#elif BB_SPI_CPOL==0
+	P1OUT |= BB_SPI_CSEL | BB_SPI_MOSI;
+	P1OUT &= ~BB_SPI_SCLK;
+#endif
+	SCLK_HIGH;
+	SCLK_LOW;
 	return 0;
 } // end spi_init
 
 
-#if SPI_MODE==0
+#if BB_SPI_CPOL==0 && BB_SPI_CPHA==0
 unsigned char spi_transfer(unsigned char byte)
 {
-	int counter;
-	for (counter = 8; counter; --counter)
-	{
-		if (byte & 0x80) MOSI_HIGH;
+	int counter = 8;
+	do {
+		if (byte & 0x80) MOSI_HIGH;		// Set MOSI
 		else MOSI_LOW;
 		byte <<= 1;
-		if (MISO_READ) byte |= 1;
-		//SPI_DELAY;
-		SCLK_HIGH;					// even edge (latch)
-		//SPI_DELAY;
-		SCLK_LOW;					// odd edge
-	}
+		BB_SPI_DELAY;					// Beat
+		SCLK_HIGH;						// Clock high
+		if (MISO_READ) byte |= 1;		// Read MISO
+		BB_SPI_DELAY;					// Beat
+		SCLK_LOW;						// Clock low
+	} while (--counter);
+
 	return byte;
 }
-#elif SPI_MODE==1
+
+#elif BB_SPI_CPOL==1 && BB_SPI_CPHA==0
 unsigned char spi_transfer(unsigned char byte)
 {
-	int counter;
-	for (counter = 8; counter; --counter)
-	{
-		SPI_DELAY;
-		SCLK_HIGH;					// even edge (latch)
-		SPI_DELAY;
-		SCLK_LOW;					// odd edge
-		if (byte & 0x80) MOSI_HIGH;
+	int counter = 8;
+	do {
+		if (byte & 0x80) MOSI_HIGH;		// Set MOSI
 		else MOSI_LOW;
 		byte <<= 1;
-		if (MISO_READ) byte |= 1;
-	}
+		BB_SPI_DELAY;					// Beat
+		SCLK_LOW;						// Clock low
+		if (MISO_READ) byte |= 1;		// Read MISO
+		BB_SPI_DELAY;					// Beat
+		SCLK_HIGH;						// Clock high
+	} while (--counter);
+
 	return byte;
 }
-#elif SPI_MODE==2
+
+#elif BB_SPI_CPOL==0 && BB_SPI_CPHA==1
 unsigned char spi_transfer(unsigned char byte)
 {
-	int counter;
-	for (counter = 8; counter; --counter)
-	{
-		if (byte & 0x80) MOSI_HIGH;
+	int counter = 8;
+	do {
+		if (byte & 0x80) MOSI_HIGH;		// Set MOSI
 		else MOSI_LOW;
 		byte <<= 1;
-		if (MISO_READ) byte |= 1;
-		SPI_DELAY;
-		SCLK_LOW;					// even edge (latch)
-		SPI_DELAY;
-		SCLK_HIGH;					// odd edge
-	}
+		SCLK_HIGH;						// Clock high
+		BB_SPI_DELAY;					// Beat
+		if (MISO_READ) byte |= 1;		// Read MISO
+		SCLK_LOW;						// Clock low
+		BB_SPI_DELAY;					// Beat
+	} while (--counter);
+
 	return byte;
 }
-#elif SPI_MODE==3
+#elif BB_SPI_CPOL==1 && BB_SPI_CPHA==1
 unsigned char spi_transfer(unsigned char byte)
 {
-	int counter;
-	for (counter = 8; counter; --counter)
-	{
-		SPI_DELAY;
-		SCLK_LOW;					// even edge (latch)
-		SPI_DELAY;
-		SCLK_HIGH;					// odd edge
-		if (byte & 0x80) MOSI_HIGH;
+	int counter = 8;
+	do {
+		if (byte & 0x80) MOSI_HIGH;		// Set MOSI
 		else MOSI_LOW;
 		byte <<= 1;
-		if (MISO_READ) byte |= 1;
-	}
+		SCLK_HIGH;						// Clock high
+		BB_SPI_DELAY;					// Beat
+		if (MISO_READ) byte |= 1;		// Read MISO
+		SCLK_LOW;						// Clock low
+		BB_SPI_DELAY;					// Beat
+	} while (--counter);
+
 	return byte;
 }
 #endif
 
-#if 0
-unsigned char spi_receive(void)
+unsigned char spi_read(void)
 {
-	volatile uint16 delay;
-	unsigned char rx_data = 0x00;
-	unsigned char shift = 0x80;
-
-	MOSI_HIGH;							// set MOSI high
-	do
-	{
-		SCLK_HIGH;						// SCLK high
-		if (MISO_READ)					// read MISO while SCLK high
-		{
-			rx_data |= shift;
-		}
-		//for (i=SPI_DELAY; i; i--);		// delay
-		delay = i2c_delay;
-		while (delay--);				// delay
-		SCLK_LOW;						// SCLK low
-		//for (i=SPI_DELAY; i; i--);		// delay
-		delay = i2c_delay;
-		while (delay--);				// delay
-	} while (shift >>= 1);
-	return rx_data;
-} // end spi_receive
-
+	return spi_transfer(0xFF);
+}
 
 void spi_send(unsigned char byte)
 {
-	volatile uint16 delay;
-	unsigned char shift = 0x80;
-
-	SCLK_LOW;							// SCLK low
-	while (shift)
-	{
-		if (byte & shift)
-		{
-			MOSI_HIGH;					// set MOSI high
-		}
-		else
-		{
-			MOSI_LOW;					// set MOSI low
-		}
-		//for (i=SPI_DELAY; i; i--);		// delay
-		delay = i2c_delay;
-		while (delay--);				// delay
-		SCLK_HIGH;						// SCLK high (latch input data)
-		//for (i=SPI_DELAY; i; i--);		// delay
-		delay = i2c_delay;
-		while (delay--);				// delay
-		SCLK_LOW;						// SCLK low
-		shift >>= 1;					// adjust mask
-	}
-	MOSI_HIGH;							// leave MOSI high
+	spi_transfer(byte);
 	return;
-} // end spi_send
-#endif
+}
