@@ -9,7 +9,7 @@
 #include <msp430.h>
 #include <setjmp.h>
 #include "MPU9250.h"
-#include "bb_i2c.h"
+#include "bb_spi.h"
 
 extern jmp_buf bb_i2c_context;				// error context
 
@@ -28,6 +28,7 @@ extern jmp_buf bb_i2c_context;				// error context
  */
 int MPU9250_init()
 {
+	int count;
 	/* TODO: Sleep for 0.1 s.
 	 *
 	 * This was previously 1 s, but that was probably
@@ -35,19 +36,19 @@ int MPU9250_init()
 	 * bring up its serial comm unit. This was one of the first functions
 	 * called on the BDL, and without a delay here, I think it didn't start up
 	 * right. */
-	error = 16000;
+	count = 16000;
 	do
 		__delay_cycles(1000);
-	while (--error);
+	while (--count);
 
 	// Reset device
 	MPU9250_write(0x6B /*pwr_mgmt_1*/, BIT_RESET);
 
 	// TODO: Sleep for 0.1 s
-	error = 1600;
+	count = 1600;
 	do
 		__delay_cycles(1000);
-	while (--error);
+	while (--count);
 
 	// Wake up chip
 	MPU9250_write(0x6B /*pwr_mgmt_1*/, 0);
@@ -63,7 +64,7 @@ int MPU9250_init()
 	MPU9250_write(0x1A /*lpf*/, INV_FILTER_42HZ);
 
 	// Set sample rate to 1000 Hz
-	MPU9250_write(0x19; /*rate_div*/, 1000 / 1000 - 1);
+	MPU9250_write(0x19 /*rate_div*/, 1000 / 1000 - 1);
 	// by default, the SDK would now overwrite the low-pass filter to be 20 Hz,
 	// but let's skip this for now...
 

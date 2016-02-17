@@ -24,26 +24,4 @@
 		<nature>org.eclipse.cdt.core.ccnature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>bapi.c</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/bapi.c</locationURI>
-		</link>
-		<link>
-			<name>bapi.h</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/bapi.h</locationURI>
-		</link>
-		<link>
-			<name>usi_i2c.c</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/usi_i2c.c</locationURI>
-		</link>
-		<link>
-			<name>usi_i2c.h</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/usi_i2c.h</locationURI>
-		</link>
-	</linkedResources>
 </projectDescription>
