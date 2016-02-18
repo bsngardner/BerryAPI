@@ -13,9 +13,11 @@
 #include <stdint.h>
 
 
-int spi_init(void);
-uint8_t spi_transfer(uint8_t byte);
-void spi_write(uint8_t);
-uint8_t spi_read(void);
+int bb_spi_init(void);
+uint8_t bb_spi_transfer(uint8_t byte);
+void bb_spi_write(uint8_t);
+uint8_t bb_spi_read(void);
+void bb_spi_assert_csel(void);
+void bb_spi_release_csel(void);
 
 #endif /* BB_SPI_H_ */

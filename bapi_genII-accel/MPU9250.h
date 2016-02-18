@@ -13,9 +13,7 @@
 #define MPU9250_ADR 0x68
 
 int MPU9250_init();
-void MPU9250_accel_event();
-void MPU9250_gyro_event();
-uint8_t MPU9250_read(uint8_t regaddr, uint8_t *buf, uint8_t count);
+void MPU9250_get_raw_values();
 int MPU9250_sleep();
 
 

@@ -13,6 +13,8 @@
 
 extern jmp_buf bb_i2c_context;				// error context
 
+uint8_t MPU9250_read(uint8_t regaddr, uint8_t *buf, uint8_t count);
+
 /**
  *  @brief      Initialize hardware.
  *  Initial configuration:
@@ -165,7 +167,7 @@ uint8_t MPU9250_read(uint8_t regaddr, uint8_t *buf, uint8_t count)
 	while (--count > 0);
 
 	// Release chip select
-	bb_spi_release();
+	bb_spi_release_csel();
 
 	// Return the last value read
 	return *(buf-1);

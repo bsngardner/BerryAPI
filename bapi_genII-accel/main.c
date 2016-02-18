@@ -8,6 +8,7 @@
 #include "msp430.h"
 #include "bapi.h"
 #include "pins.h"
+#include "MPU9250.h"
 
 //Function Prototypes
 void set_register(uint8_t value);
@@ -16,11 +17,15 @@ uint8_t get_register();
 //Global variable externs
 extern register_table_t reg_table;
 
-#define TYPE 02 //LED
+#define TYPE 8 // Accelerometer
 
 void main() {
 	bapi_init(_16MHZ, TYPE);
 
+	bb_spi_init();
+	MPU9250_init();
+	while(1)
+		MPU9250_get_raw_values();
 }
 
 void set_register(uint8_t value) {
