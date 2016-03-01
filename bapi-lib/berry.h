@@ -5,8 +5,8 @@
  *      Author: Broderick
  */
 
-#ifndef BAPI_H_
-#define BAPI_H_
+#ifndef BERRY_BAPI_H_
+#define BERRY_BAPI_H_
 #include <stdint.h>
 
 //Typedef for clock speed adjustment
@@ -40,4 +40,4 @@ extern register_table_t reg_table;
 int bapi_init(CLOCK_SPEED clock, uint8_t device_type);
 inline void check_timeout();
 
-#endif /* BAPI_H_ */
+#endif /* BERRY_BAPI_H_ */

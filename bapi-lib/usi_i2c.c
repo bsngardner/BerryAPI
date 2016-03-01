@@ -6,9 +6,9 @@
  */
 
 #include "msp430.h"
-#include "bapi.h"
 #include "usi_i2c.h"
 #include <stdlib.h>
+#include "berry.h"
 
 //enum
 typedef enum {

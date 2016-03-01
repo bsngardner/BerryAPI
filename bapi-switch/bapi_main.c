@@ -44,19 +44,19 @@ void port_init() {
 	P1DIR &= ~SW0;
 	P1REN |= SW0;
 }
-
-//Main
-int main(void) {
-	bapi_init(_16MHZ, TYPE);
-	port_init();
-	__enable_interrupt();
-
-	while (1) {
-		LPM0;                              // CPU off, await USI interrupt
-		__no_operation();                  // Used for IAR
-
-	}
-}
+//
+////Main
+//int main(void) {
+//	bapi_init(_16MHZ, TYPE);
+//	port_init();
+//	__enable_interrupt();
+//
+//	while (1) {
+//		LPM0;                              // CPU off, await USI interrupt
+//		__no_operation();                  // Used for IAR
+//
+//	}
+//}
 
 void set_register(uint8_t value) {
 	switch (reg_table.current) {

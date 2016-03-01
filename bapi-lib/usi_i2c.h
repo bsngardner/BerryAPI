@@ -5,8 +5,8 @@
  *      Author: Broderick
  */
 
-#ifndef USI_I2C_H_
-#define USI_I2C_H_
+#ifndef BERRY_USI_I2C_H_
+#define BERRY_USI_I2C_H_
 
 #include <stdint.h>
 
@@ -24,4 +24,4 @@ extern uint8_t get_register();
 
 //Extern variables
 
-#endif /* USI_I2C_H_ */
+#endif /* BERRY_USI_I2C_H_ */

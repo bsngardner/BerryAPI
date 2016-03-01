@@ -30,6 +30,12 @@ volatile uint8_t* PxIN[3] = { 0, &P1IN, &P2IN };
 volatile uint8_t regs[TABLE_SIZE] = { 0 };
 register_table_t reg_table = { regs, TABLE_SIZE };
 
+int main(){
+	device_init();
+	bapi_init(_16MHZ);
+	LPM0;
+}
+
 int bapi_init(CLOCK_SPEED clock, uint8_t device_type) {
 	seed_rand();
 	msp430_init(clock);
