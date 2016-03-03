@@ -6,21 +6,18 @@
  */
 
 #include "msp430.h"
-#include "bapi.h"
-#include "pins.h"
 
-//Function Prototypes
-void set_register(uint8_t value);
-uint8_t get_register();
+#include "berry.h"
 
-//Global variable externs
+
+//Global externs
 extern register_table_t reg_table;
 
-#define TYPE 02 //LED
+#define DEV_TYPE 0x00
 
-void main() {
-	bapi_init(_16MHZ, TYPE);
+uint8_t device_init(){
 
+	return DEV_TYPE;
 }
 
 void set_register(uint8_t value) {
@@ -58,14 +55,3 @@ uint8_t get_register() {
 	}
 	return 0;
 }
-
-//------------------------------------------------------------------------------
-//	Watchdog Timer ISR
-//
-#pragma vector = WDT_VECTOR
-__interrupt void WDT_ISR(void) {
-	check_timeout();
-
-
-	return;
-} // end WDT_ISR

@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "string.h"
-#include "bapi.h"
+#include "berry.h"
 
 static const int log_table[] = { 16384, 13653, 12056, 10923, 10044, 9325, 8718,
 		8192, 7728, 7313, 6937, 6595, 6279, 5987, 5716, 5461, 5223, 4997, 4784,
@@ -17,8 +17,6 @@ static const int log_table[] = { 16384, 13653, 12056, 10923, 10044, 9325, 8718,
 		456, 388, 320, 254, 189, 125, 62, 0 };
 
 //Defines
-#define DEFAULT_REG 2
-#define REG_TABLE_SIZE 16
 #define TYPE 0x05	//LED type
 
 //Macros
@@ -46,19 +44,9 @@ void port_init();
 inline void port_init() {
 	P1DIR |= (LR | LG | LB);
 }
-
-//**************************MAIN*******************************************//
-int main(void) {
-	bapi_init(_16MHZ, TYPE);
+uint8_t device_init(){
 	port_init();
-
-	__enable_interrupt();
-	while (1) {
-
-		LPM0;                              // CPU off, await USI interrupt
-		__no_operation();                  // Used for IAR
-	}
-
+	return DEV_TYPE;
 }
 
 void set_register(uint8_t value) {

@@ -37,7 +37,8 @@ typedef enum {
 #define send_ack SDA_OUT; USISRL = 0x00; USICNT |= 0x01// Bit counter = 1, send Ack bit
 #define send_nack SDA_IN; USISRL = 0xFF; USICNT |= 0x01// Bit counter = 1, send NAck bit
 
-//Global variables
+//Global externs
+extern register_table_t reg_table;
 
 //Static variables
 volatile static i2c_state_t i2cState = I2C_IDLE;  // State variable
@@ -102,7 +103,6 @@ inline void check_timeout() {
 		i2cState = I2C_IDLE;
 	}
 }
-
 
 //******************************************************************************
 // USI interrupt service routine

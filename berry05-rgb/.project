@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>RGBerry</name>
+	<name>berry05-rgb</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -24,31 +24,4 @@
 		<nature>org.eclipse.cdt.core.ccnature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>bapi.c</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/bapi.c</locationURI>
-		</link>
-		<link>
-			<name>bapi.h</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/bapi.h</locationURI>
-		</link>
-		<link>
-			<name>pins.h</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/pins.h</locationURI>
-		</link>
-		<link>
-			<name>usi_i2c.c</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/usi_i2c.c</locationURI>
-		</link>
-		<link>
-			<name>usi_i2c.h</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/bapiLib/usi_i2c.h</locationURI>
-		</link>
-	</linkedResources>
 </projectDescription>

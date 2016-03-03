@@ -5,8 +5,8 @@
  *      Author: Broderick
  */
 
-#ifndef BERRY_BAPI_H_
-#define BERRY_BAPI_H_
+#ifndef BERRY_H_
+#define BERRY_H_
 #include <stdint.h>
 
 //Typedef for clock speed adjustment
@@ -21,23 +21,27 @@ typedef struct {
 	volatile uint8_t current;
 } register_table_t;
 
-//Global externs
-extern register_table_t reg_table;
-
 //Status LED
 #define LED0_PORT 2
 #define LED0_PIN BIT6
-
-//Register table defines
-#define TABLE_SIZE 16
 
 //Watchdog defines
 #define WDT_HZ 2000
 #define WDT_CTL WDT_MDLY_8
 #define USI_TIMEOUT (WDT_HZ/2)
 
-//available functions
-int bapi_init(CLOCK_SPEED clock, uint8_t device_type);
-inline void check_timeout();
+//Important defines
+#define TABLE_SIZE 16
+#define CLOCK	_16MHZ
 
-#endif /* BERRY_BAPI_H_ */
+//available functions
+int bapi_init(CLOCK_SPEED clock);
+inline void check_timeout();
+extern void main();
+
+//Function Prototypes -- must be declared by user
+uint8_t device_init();
+void set_register(uint8_t value);
+uint8_t get_register();
+
+#endif /* BERRY_H_ */

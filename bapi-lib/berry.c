@@ -7,6 +7,7 @@
 
 #include "msp430.h"
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "berry.h"
 #include "usi_i2c.h"
@@ -31,12 +32,19 @@ volatile uint8_t* PxIN[3] = { 0, &P1IN, &P2IN };
 volatile uint8_t regs[TABLE_SIZE] = { 0 };
 register_table_t reg_table = { regs, TABLE_SIZE };
 
-int bapi_init(CLOCK_SPEED clock, uint8_t device_type) {
+void main() {
+	bapi_init(CLOCK);
+	reg_table.table[0] = device_init();
+	while (1) {
+		LPM0;
+	}
+}
+
+int bapi_init(CLOCK_SPEED clock) {
 	seed_rand();
 	msp430_init(clock);
 	gpio_port_init();
 	usi_init();
-	reg_table.table[0] = device_type;
 	return 0;
 }
 
@@ -102,3 +110,14 @@ void seed_rand() {
 	srand(seed);
 	__no_operation();
 }
+
+//------------------------------------------------------------------------------
+//	Watchdog Timer ISR
+//
+#pragma vector = WDT_VECTOR
+__interrupt void WDT_ISR(void) {
+	check_timeout();
+
+	return;
+} // end WDT_ISR
+

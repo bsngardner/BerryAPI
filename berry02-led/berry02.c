@@ -3,8 +3,8 @@
  *
  */
 
+#include "berry.h"
 #include <msp430.h> 
-#include "bapi.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -18,9 +18,7 @@ static const int log_table[] = { 16384, 13653, 12056, 10923, 10044, 9325, 8718,
 		456, 388, 320, 254, 189, 125, 62, 0 };
 
 //Defines
-#define DEFAULT_REG 2
-#define REG_TABLE_SIZE 16
-#define TYPE 0x02	//LED type
+#define DEV_TYPE 0x02	//LED type
 
 #define LED0 0
 #define STATUS 1
@@ -41,7 +39,9 @@ static const int log_table[] = { 16384, 13653, 12056, 10923, 10044, 9325, 8718,
 
 volatile char step;
 volatile int speed;
-//Variable externs
+
+//Global externs
+extern register_table_t reg_table;
 
 //Function prototypes
 
@@ -53,18 +53,9 @@ inline void port_init() {
 	P2OUT |= L0;
 }
 
-//**************************MAIN*******************************************//
-int main(void) {
-	bapi_init(_16MHZ, TYPE);
+uint8_t device_init() {
 	port_init();
-
-	__enable_interrupt();
-	while (1) {
-
-		LPM0;                              // CPU off, await USI interrupt
-		__no_operation();                  // Used for IAR
-	}
-
+	return DEV_TYPE;
 }
 
 void set_register(uint8_t value) {
@@ -134,12 +125,3 @@ uint8_t get_register() {
 	}
 	return 0;
 }
-
-//------------------------------------------------------------------------------
-//	Watchdog Timer ISR
-//
-#pragma vector = WDT_VECTOR
-__interrupt void WDT_ISR(void) {
-	check_timeout();
-	return;
-} // end WDT_ISR
