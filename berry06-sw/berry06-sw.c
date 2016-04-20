@@ -18,7 +18,7 @@
  */
 
 #include <msp430.h>
-#include "bapi.h"
+#include "berry.h"
 
 #include <stdint.h>
 #include "string.h"
@@ -34,7 +34,7 @@
 void port_init();
 
 //defines
-#define TYPE 6
+#define DEV_TYPE 6
 
 #define COND_BIT(bool,byte,mask) (byte ^= ((-bool) ^ (byte)) & (mask))
 //Register table mapped to PxOUT
@@ -43,20 +43,18 @@ void port_init() {
 	P1OUT |= SW0;
 	P1DIR &= ~SW0;
 	P1REN |= SW0;
+	P1IES |= SW0;
+	P1IE |= SW0;
 }
-//
-////Main
-//int main(void) {
-//	bapi_init(_16MHZ, TYPE);
-//	port_init();
-//	__enable_interrupt();
-//
-//	while (1) {
-//		LPM0;                              // CPU off, await USI interrupt
-//		__no_operation();                  // Used for IAR
-//
-//	}
-//}
+
+uint8_t device_init() {
+	port_init();
+	return DEV_TYPE;
+}
+
+void tick() {
+
+}
 
 void set_register(uint8_t value) {
 	switch (reg_table.current) {
@@ -74,28 +72,24 @@ uint8_t get_register() {
 
 	switch (reg_table.current) {
 	case 2:
-
 		return reg_table.table[2];
 	default:
 		return reg_table.table[0];
 
 	}
 }
+
 #define test(byte,bit) (byte & bit)
-//------------------------------------------------------------------------------
-//	Watchdog Timer ISR
-//
-#pragma vector = WDT_VECTOR
-__interrupt void WDT_ISR(void) {
 
-	check_timeout();
-
-	if (!test(SWPORT, SW0)) {
-		reg_table.table[SW] = 1;
-		P2OUT |= BIT6;
+#pragma vector = PORT1_VECTOR
+__interrupt void p1_isr(void) {
+	P1IFG &= ~SW0;
+	if (test(P1IN, SW0)) {
+		P1IES |= SW0;
+		reg_table.table[2] = 0;
 	} else {
-		reg_table.table[SW] = 0;
-		P2OUT &= ~BIT6;
+		P1IES &= ~SW0;
+		reg_table.table[2] = 1;
 	}
-	return;
-} // end WDT_ISR
+}
+

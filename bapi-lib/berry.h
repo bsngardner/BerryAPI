@@ -35,13 +35,16 @@ typedef struct {
 #define CLOCK	_16MHZ
 
 //available functions
-int bapi_init(CLOCK_SPEED clock);
-inline void check_timeout();
-extern void main();
+void main();
 
 //Function Prototypes -- must be declared by user
 uint8_t device_init();
+void tick();
 void set_register(uint8_t value);
 uint8_t get_register();
+
+//Variable externs
+extern register_table_t reg_table;
+extern volatile uint16_t tick_max;
 
 #endif /* BERRY_H_ */

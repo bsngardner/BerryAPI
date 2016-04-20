@@ -58,6 +58,10 @@ uint8_t device_init() {
 	return DEV_TYPE;
 }
 
+void tick() {
+
+}
+
 void set_register(uint8_t value) {
 	switch (reg_table.current) {
 	case 0:	//Type register
@@ -69,22 +73,22 @@ void set_register(uint8_t value) {
 	case LED1:	//LED 1
 		reg_table.table[LED1] = value;
 		COND_BIT(value, P1OUT, L1);
-		reg_table.current++;
+		reg_table.current = LED2;
 		break;
 	case LED2:	//LED 2
 		reg_table.table[LED2] = value;
 		COND_BIT(value, P1OUT, L2);
-		reg_table.current++;
+		reg_table.current=LED3;
 		break;
 	case LED3:	//LED 3
 		reg_table.table[LED3] = value;
 		COND_BIT(value, P1OUT, L3);
-		reg_table.current++;
+		reg_table.current=LED4;
 		break;
 	case LED4:
 		reg_table.table[LED4] = value;
 		COND_BIT(value, P1OUT, L4);
-		reg_table.current++;
+		reg_table.current=LED1;
 		break;
 	case 15:
 		reg_table.current = LED1;

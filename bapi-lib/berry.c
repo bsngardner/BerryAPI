@@ -13,9 +13,11 @@
 #include "usi_i2c.h"
 
 //Prototypes
+int bapi_init(CLOCK_SPEED clock);
 void seed_rand();
 void msp430_init(CLOCK_SPEED clock);
 void gpio_port_init();
+inline void check_timeout();
 
 //Constants for clock speed init
 static const struct {
@@ -31,46 +33,41 @@ volatile uint8_t* PxIN[3] = { 0, &P1IN, &P2IN };
 //Global variables
 volatile uint8_t regs[TABLE_SIZE] = { 0 };
 register_table_t reg_table = { regs, TABLE_SIZE };
+volatile uint16_t sys_event = 0;
+volatile uint16_t tick_max = 0;
+volatile uint16_t tick_count = 1;
 
 void main() {
 	bapi_init(CLOCK);
 	reg_table.table[0] = device_init();
+	tick_count = 1;
+	// Enable global interrupts after all initialization is finished.
+	__enable_interrupt();
+
+	// Wait for an interrupt
 	while (1) {
-		LPM0;
+		// disable interrupts before check sys_event
+		__disable_interrupt();
+
+		if (!sys_event) {
+			// no events pending, enable interrupts and goto sleep (LPM0)
+			__bis_SR_register(LPM0_bits | GIE);
+			continue;
+		} else {
+			// at least 1 event is pending, enable interrupts before servicing
+			__enable_interrupt();
+			tick();
+			sys_event = 0;
+		}
 	}
 }
 
-int bapi_init(CLOCK_SPEED clock) {
+inline int bapi_init(CLOCK_SPEED clock) {
 	seed_rand();
 	msp430_init(clock);
 	gpio_port_init();
 	usi_init();
 	return 0;
-}
-
-void set_reg(uint8_t value) {
-	switch (reg_table.current) {
-	case 0:
-		break;
-	case 1:
-		reg_table.table[1] = value;
-		break;
-	default:
-		set_register(value);
-		break;
-	}
-	return;
-}
-
-uint8_t get_reg() {
-	switch (reg_table.current) {
-	case 0:
-		return reg_table.table[0];
-	case 1:
-		return reg_table.table[1];
-	default:
-		return get_register();
-	}
 }
 
 inline void msp430_init(CLOCK_SPEED clock) {
@@ -117,7 +114,11 @@ void seed_rand() {
 #pragma vector = WDT_VECTOR
 __interrupt void WDT_ISR(void) {
 	check_timeout();
-
+	if (tick_max && !(--tick_count)) {
+		tick_count = tick_max;
+		sys_event |= 0x01;
+		__bic_SR_register_on_exit(LPM0_bits); // wake up on exit
+	}
 	return;
 } // end WDT_ISR
 

@@ -177,7 +177,12 @@ __interrupt void USI_TXRX(void) {
 		if (byte_count == 1) {
 			reg_table.current = USISRL;
 		} else {
-			set_register(USISRL);
+			if (reg_table.current == 0)
+				reg_table.table[0] = USISRL;
+			else if (reg_table.current == 1)
+				reg_table.table[1] = USISRL;
+			else
+				set_register(USISRL);
 		}
 		i2cState = I2C_READ_STOP;
 		USICTL1 &= ~USISTP;
@@ -235,7 +240,12 @@ __interrupt void USI_TXRX(void) {
 		//ACK: fall through to transmit another byte
 	case I2C_TX:
 		SDA_OUT;
-		USISRL = get_register();
+		if (reg_table.current == 0)
+			USISRL = reg_table.table[0];
+		else if (reg_table.current == 1)
+			USISRL = reg_table.table[1];
+		else
+			USISRL = get_register();
 		USICNT |= 0x08;
 		i2cState = I2C_RX_NACK;
 		break;
