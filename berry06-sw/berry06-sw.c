@@ -49,33 +49,31 @@ void port_init() {
 
 uint8_t device_init() {
 	port_init();
+	tick_speed = WDT_HZ/2;
 	return DEV_TYPE;
 }
 
 void tick() {
-
+	P2OUT ^= LED0_PIN;
 }
 
 void set_register(uint8_t value) {
-	switch (reg_table.current) {
+	switch (current_register) {
 	case 2:
-		reg_table.table[2] = value;
+		//reg_table.table[2] = value;
 		break;
 	default:
 		break;
 	}
-
 	return;
 }
 
 uint8_t get_register() {
-
-	switch (reg_table.current) {
+	switch (current_register) {
 	case 2:
-		return reg_table.table[2];
+		return registers[2];
 	default:
-		return reg_table.table[0];
-
+		return registers[0];
 	}
 }
 
@@ -86,10 +84,10 @@ __interrupt void p1_isr(void) {
 	P1IFG &= ~SW0;
 	if (test(P1IN, SW0)) {
 		P1IES |= SW0;
-		reg_table.table[2] = 0;
+		registers[2] = 0;
 	} else {
 		P1IES &= ~SW0;
-		reg_table.table[2] = 1;
+		registers[2] = 1;
 	}
 }
 

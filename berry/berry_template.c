@@ -9,10 +9,6 @@
 
 #include "berry.h"
 
-
-//Global externs
-extern register_table_t reg_table;
-
 #define DEV_TYPE 0x00
 
 uint8_t device_init(){
@@ -21,7 +17,7 @@ uint8_t device_init(){
 }
 
 void set_register(uint8_t value) {
-	switch (reg_table.current) {
+	switch (current_register) {
 	case 0:
 
 		break;
@@ -40,17 +36,17 @@ void set_register(uint8_t value) {
 
 uint8_t get_register() {
 
-	switch (reg_table.current) {
+	switch (current_register) {
 	case 0:
 
-		return reg_table.table[0];
+		return registers[0];
 	case 1:
 
-		return reg_table.table[1];
+		return registers[1];
 		//....
 	case 15:
 
-		return reg_table.table[15];
+		return registers[15];
 
 	}
 	return 0;

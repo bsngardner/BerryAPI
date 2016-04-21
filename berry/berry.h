@@ -14,25 +14,22 @@ typedef enum {
 	_1MHZ, _8MHZ, _12MHZ, _16MHZ
 } CLOCK_SPEED;
 
-//Register table struct
-typedef struct {
-	volatile uint8_t * table;
-	volatile uint8_t size;
-	volatile uint8_t current;
-} register_table_t;
-
 //Status LED
 #define LED0_PORT 2
 #define LED0_PIN BIT6
 
+//Universally defined registers
+#define TYPE_REG 0
+#define STATUS_REG 1
+
 //Watchdog defines
-#define WDT_HZ 2000
-#define WDT_CTL WDT_MDLY_8
+#define WDT_HZ 200
+#define WDT_CTL WDT_ADLY_1_9
 #define USI_TIMEOUT (WDT_HZ/2)
 
 //Important defines
-#define TABLE_SIZE 16
-#define CLOCK	_16MHZ
+#define TABLE_SIZE 32
+#define CLOCK _16MHZ
 
 //available functions
 void main();
@@ -44,7 +41,8 @@ void set_register(uint8_t value);
 uint8_t get_register();
 
 //Variable externs
-extern register_table_t reg_table;
-extern volatile uint16_t tick_max;
+extern volatile uint8_t registers[TABLE_SIZE];
+extern volatile uint16_t current_register;
+extern volatile uint16_t tick_speed;
 
 #endif /* BERRY_H_ */
