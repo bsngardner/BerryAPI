@@ -30,6 +30,7 @@ typedef enum
 #define GEN_CALL 0x00
 #define NEW_ADDR 0x00
 #define RESET_ALL 0x01
+#define VERIFY_PROJECT_HASH 0x02
 
 //Macros
 #define SDA_OUT USICTL0 |= USIOE
@@ -40,8 +41,14 @@ typedef enum
 
 //Static variables
 volatile static i2c_state_t i2cState = I2C_IDLE;  // State variable
-volatile static uint8_t slave_addr = 0;
 static uint8_t global_addr = 0;
+volatile static uint8_t temp_proj_hash = 0;
+
+// Persistent memory
+#pragma DATA_SECTION(proj_hash, ".infoA");
+volatile static uint8_t proj_hash = 0;
+#pragma DATA_SECTION(slave_addr, ".infoB");
+volatile static uint8_t slave_addr = 0;
 
 inline void usi_init()
 {
@@ -178,6 +185,8 @@ __interrupt void USI_TXRX(void)
 			i2cState = I2C_IDLE;		// Reset state machine
 			break;
 		}
+		/* no break */
+
 	case I2C_RX:
 		// 8 Receive data byte
 		SDA_IN;		// SDA = input
@@ -257,6 +266,42 @@ __interrupt void USI_TXRX(void)
 			;
 			i2cState = I2C_RESET;
 			break;
+
+		case VERIFY_PROJECT_HASH:
+			// Get the next byte (project hash)
+			if (byte_count == 1)
+			{
+				send_ack
+				;
+				i2cState = I2C_RX;
+			}
+			// Got the project hash; check if it matches our own project hash
+			else if (byte_count == 2)
+			{
+				temp_proj_hash = USISRL;
+				if (proj_hash != temp_proj_hash)
+				{
+					// Hashes don't match, clear slave addr and update hash
+					slave_addr = 0;
+					proj_hash = temp_proj_hash;
+					send_nack
+					;
+				}
+				else
+				{
+					// Hashes match, ack
+					send_ack
+					;
+				}
+				// reset state machine
+				i2cState = I2C_RESET;
+			}
+			else
+			{
+				i2cState = I2C_RESET;
+			}
+			break;
+
 		default:
 			break;
 		}
@@ -269,6 +314,7 @@ __interrupt void USI_TXRX(void)
 			break;
 		}
 		//ACK: fall through to transmit another byte
+		/* no break */
 	case I2C_TX:
 		SDA_OUT;
 		if (current_register == 0)
