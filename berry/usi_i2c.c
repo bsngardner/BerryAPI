@@ -42,13 +42,10 @@ typedef enum
 //Static variables
 volatile static i2c_state_t i2cState = I2C_IDLE;  // State variable
 static uint8_t global_addr = 0;
-volatile static uint8_t temp_proj_hash = 0;
 
-// Persistent memory
-#pragma DATA_SECTION(proj_hash, ".infoA");
-volatile static uint8_t proj_hash = 0;
-#pragma DATA_SECTION(slave_addr, ".infoB");
-volatile static uint8_t slave_addr = 0;
+//Local copies of persistent variables
+volatile uint8_t proj_hash = 0;
+volatile uint8_t slave_addr = 0;
 
 inline void usi_init()
 {
@@ -77,6 +74,7 @@ inline void set_io_pin()
 	P1DIR &= ~SDA_PIN;
 	return;
 }
+
 inline reset_i2c_pin()
 {
 	SDA_IN;
@@ -85,7 +83,6 @@ inline reset_i2c_pin()
 	return;
 }
 
-static volatile uint8_t i2c_sleep;
 inline uint16_t arbitration()
 {
 
@@ -126,7 +123,7 @@ __interrupt void USI_TXRX(void)
 {
 #elif defined(__GNUC__)
 	void __attribute__ ((interrupt(USI_VECTOR))) USI_TXRX (void)
-	{
+	{}
 #else
 #error Compiler not supported!
 #endif
@@ -134,6 +131,7 @@ __interrupt void USI_TXRX(void)
 	static uint8_t byte_count = 0;
 	static uint8_t cmd;
 	uint8_t addr;
+	uint8_t temp_hash;
 
 	timeout_cnt = USI_TIMEOUT;
 
@@ -185,8 +183,8 @@ __interrupt void USI_TXRX(void)
 			i2cState = I2C_IDLE;		// Reset state machine
 			break;
 		}
+		// No stop - fall through to receive another byte
 		/* no break */
-
 	case I2C_RX:
 		// 8 Receive data byte
 		SDA_IN;		// SDA = input
@@ -226,7 +224,7 @@ __interrupt void USI_TXRX(void)
 		switch (cmd)
 		{
 		case NEW_ADDR:
-			if (slave_addr)
+			if (slave_addr && (slave_addr < 128))
 			{
 				send_nack
 				;
@@ -246,7 +244,7 @@ __interrupt void USI_TXRX(void)
 				{
 					if (arbitration())
 					{
-						slave_addr = USISRL;
+						slave_addr = USISRL; // update slave address
 						send_ack
 						;
 					}
@@ -261,7 +259,7 @@ __interrupt void USI_TXRX(void)
 			}
 			break;
 		case RESET_ALL:
-			slave_addr = 0;
+			slave_addr = 0; // clear slave addr
 			send_ack
 			;
 			i2cState = I2C_RESET;
@@ -278,12 +276,12 @@ __interrupt void USI_TXRX(void)
 			// Got the project hash; check if it matches our own project hash
 			else if (byte_count == 2)
 			{
-				temp_proj_hash = USISRL;
-				if (proj_hash != temp_proj_hash)
+				temp_hash = USISRL;
+				if (proj_hash != temp_hash)
 				{
 					// Hashes don't match, clear slave addr and update hash
 					slave_addr = 0;
-					proj_hash = temp_proj_hash;
+					proj_hash = temp_hash; // update local copy
 					send_nack
 					;
 				}
@@ -341,4 +339,3 @@ __interrupt void USI_TXRX(void)
 
 	USICTL1 &= ~USIIFG;                  // Clear pending flags
 }
-

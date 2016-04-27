@@ -48,11 +48,30 @@ volatile uint16_t sys_event = 0;
 volatile uint16_t tick_speed = 0;
 volatile uint16_t tick_count = 1;
 
+//Persistent memory - DO NOT USE SEGMENT A - IT IS FOR CALIBRATION DATA
+#pragma DATA_SECTION(flash_proj_hash, ".infoD");
+uint8_t flash_proj_hash;
+#pragma DATA_SECTION(flash_slave_addr, ".infoC");
+uint8_t flash_slave_addr;
+
+// Local copies of persistent variables
+extern uint8_t proj_hash;
+extern uint8_t slave_addr;
+
+//Local functions
+static void flash_write_byte( uint16_t address, uint8_t byte );
+static void flash_delete_segment( uint16_t segment );
+
 void main()
 {
 	bapi_init();
 	registers[TYPE_REG] = device_init();
 	tick_count = 1;
+
+	// Read persistent variables into local copies
+	proj_hash = flash_proj_hash;
+	slave_addr = flash_slave_addr;
+
 	// Enable global interrupts after all initialization is finished.
 	__enable_interrupt();
 
@@ -64,7 +83,7 @@ void main()
 
 		if (!sys_event)
 		{
-			// no events pending, enable interrupts and goto sleep (LPM0)
+			// no events pending, enable interrupts and goto sleep (LPM3)
 			__bis_SR_register(LPM3_bits | GIE);
 			continue;
 		}
@@ -72,8 +91,27 @@ void main()
 		{
 			// at least 1 event is pending, enable interrupts before servicing
 			__enable_interrupt();
+
+			// User-defined tick function
 			tick();
+
+			// Clear system events
 			sys_event = 0;
+
+			// Update project hash in flash if it has changed
+			if (proj_hash != flash_proj_hash)
+			{
+				uint16_t addr = (uint16_t)&flash_proj_hash;
+				flash_delete_segment(addr);
+				flash_write_byte(addr, proj_hash);
+			}
+			// Update slave address in flash if it has changed
+			if (slave_addr != flash_slave_addr)
+			{
+				uint16_t addr = (uint16_t)&flash_slave_addr;
+				flash_delete_segment(addr);
+				flash_write_byte(addr, slave_addr);
+			}
 		}
 	}
 }
@@ -143,3 +181,26 @@ __interrupt void WDT_ISR(void)
 	return;
 } // end WDT_ISR
 
+
+static void flash_delete_segment( uint16_t segment )
+{ // Argument is an address in desired segment
+  uint8_t *flash_ptr;
+
+  flash_ptr = (uint8_t*) segment; // Initialize pointer
+  FCTL3 = FWKEY;                  // Clear lock-bit
+  FCTL1 = (FWKEY | ERASE);        // Set erase-bit
+  *flash_ptr = 0;                 // Dummy-write to delete segment - CPU hold
+  FCTL3 = (FWKEY | LOCK);         // Set lock-bit
+}
+
+static void flash_write_byte( uint16_t address, uint8_t byte )
+{
+  uint8_t *flash_ptr;
+
+  flash_ptr = (uint8_t*) address; // Initialize pointer
+  FCTL3 = FWKEY;                  // Clear lock-bit
+  FCTL1 = (FWKEY | WRT);          // Set write-bit
+  *flash_ptr = byte;              // Write byte - CPU hold
+  FCTL1 = FWKEY;                  // Clear write-bit
+  FCTL3 = (FWKEY | LOCK);         // Set lock-bit
+}
