@@ -61,6 +61,8 @@ extern uint8_t slave_addr;
 //Local functions
 static void flash_write_byte( uint16_t address, uint8_t byte );
 static void flash_delete_segment( uint16_t segment );
+static void flash_update_event();
+static void project_mem_init();
 
 void main()
 {
@@ -69,8 +71,7 @@ void main()
 	tick_count = 1;
 
 	// Read persistent variables into local copies
-	proj_hash = flash_proj_hash;
-	slave_addr = flash_slave_addr;
+	project_mem_init();
 
 	// Enable global interrupts after all initialization is finished.
 	__enable_interrupt();
@@ -87,32 +88,23 @@ void main()
 			__bis_SR_register(LPM3_bits | GIE);
 			continue;
 		}
-		else
+
+		// at least 1 event is pending, enable interrupts before servicing
+		__enable_interrupt();
+
+		// User-defined tick function
+		if (sys_event & TICK_EVENT)
 		{
-			// at least 1 event is pending, enable interrupts before servicing
-			__enable_interrupt();
-
-			// User-defined tick function
+			sys_event &= ~TICK_EVENT;
 			tick();
-
-			// Clear system events
-			sys_event = 0;
-
-			// Update project hash in flash if it has changed
-			if (proj_hash != flash_proj_hash)
-			{
-				uint16_t addr = (uint16_t)&flash_proj_hash;
-				flash_delete_segment(addr);
-				flash_write_byte(addr, proj_hash);
-			}
-			// Update slave address in flash if it has changed
-			if (slave_addr != flash_slave_addr)
-			{
-				uint16_t addr = (uint16_t)&flash_slave_addr;
-				flash_delete_segment(addr);
-				flash_write_byte(addr, slave_addr);
-			}
 		}
+		// Update persistent memory
+		else if (sys_event & FLASH_UPDATE_EVENT)
+		{
+			sys_event &= ~FLASH_UPDATE_EVENT;
+			flash_update_event();
+		}
+
 	}
 }
 
@@ -175,12 +167,28 @@ __interrupt void WDT_ISR(void)
 	if (tick_speed && !(--tick_count))
 	{
 		tick_count = tick_speed;
-		sys_event = 1;
+		sys_event |= TICK_EVENT;
 		__bic_SR_register_on_exit(LPM3_bits); // wake up on exit
 	}
+//	sys_event |= FLASH_UPDATE_EVENT;
 	return;
 } // end WDT_ISR
 
+static void project_mem_init()
+{
+	// Copy project hash and berry address into local memory
+	proj_hash = flash_proj_hash;
+	slave_addr = flash_slave_addr;
+
+	// If slave address is 0xff, it was just programmed and should be reset
+	if (slave_addr == 0xff)
+	{
+		slave_addr = 0;
+		uint16_t addr = (uint16_t)&flash_slave_addr;
+		flash_delete_segment(addr);
+		flash_write_byte(addr, slave_addr);
+	}
+}
 
 static void flash_delete_segment( uint16_t segment )
 { // Argument is an address in desired segment
@@ -203,4 +211,16 @@ static void flash_write_byte( uint16_t address, uint8_t byte )
   *flash_ptr = byte;              // Write byte - CPU hold
   FCTL1 = FWKEY;                  // Clear write-bit
   FCTL3 = (FWKEY | LOCK);         // Set lock-bit
+}
+
+static void flash_update_event()
+{
+	// Update project hash in flash
+	uint16_t addr = (uint16_t)&flash_proj_hash;
+	flash_delete_segment(addr);
+	flash_write_byte(addr, proj_hash);
+	// Update slave address in flash
+	addr = (uint16_t)&flash_slave_addr;
+	flash_delete_segment(addr);
+	flash_write_byte(addr, slave_addr);
 }

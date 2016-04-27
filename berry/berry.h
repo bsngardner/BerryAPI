@@ -31,6 +31,10 @@ typedef enum {
 #define TABLE_SIZE 32
 #define CLOCK _16MHZ
 
+//Events
+#define TICK_EVENT 0x01
+#define FLASH_UPDATE_EVENT 0x02
+
 //available functions
 void main();
 

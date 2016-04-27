@@ -47,6 +47,9 @@ static uint8_t global_addr = 0;
 volatile uint8_t proj_hash = 0;
 volatile uint8_t slave_addr = 0;
 
+//System events
+extern volatile uint16_t sys_event;
+
 inline void usi_init()
 {
 
@@ -224,7 +227,7 @@ __interrupt void USI_TXRX(void)
 		switch (cmd)
 		{
 		case NEW_ADDR:
-			if (slave_addr && (slave_addr < 128))
+			if (slave_addr)
 			{
 				send_nack
 				;
@@ -245,6 +248,7 @@ __interrupt void USI_TXRX(void)
 					if (arbitration())
 					{
 						slave_addr = USISRL; // update slave address
+						sys_event |= FLASH_UPDATE_EVENT;
 						send_ack
 						;
 					}
