@@ -47,9 +47,6 @@ static uint8_t global_addr = 0;
 volatile uint8_t proj_hash = 0;
 volatile uint8_t slave_addr = 0;
 
-//System events
-extern volatile uint16_t sys_event;
-
 inline void usi_init()
 {
 
@@ -247,8 +244,10 @@ __interrupt void USI_TXRX(void)
 				{
 					if (arbitration())
 					{
-						slave_addr = USISRL; // update slave address
-						sys_event |= FLASH_UPDATE_EVENT;
+						delayed_copy_to_flash(&slave_addr, USISRL,
+								FLASH_UPDATE_EVENT);
+//						slave_addr = USISRL; // update slave address
+//						sys_event |= FLASH_UPDATE_EVENT;
 						send_ack
 						;
 					}
@@ -263,9 +262,11 @@ __interrupt void USI_TXRX(void)
 			}
 			break;
 		case RESET_ALL:
-			slave_addr = 0; // clear slave addr
-			proj_hash = 0; // clear project hash
-			sys_event |= FLASH_UPDATE_EVENT;
+//			slave_addr = 0; // clear slave addr
+//			proj_hash = 0; // clear project hash
+//			sys_event |= FLASH_UPDATE_EVENT;
+			delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
+			delayed_copy_to_flash(&proj_hash, 0, FLASH_UPDATE_EVENT);
 			send_ack
 			;
 			i2cState = I2C_RESET;
@@ -286,9 +287,12 @@ __interrupt void USI_TXRX(void)
 				temp_hash = USISRL;
 				if (proj_hash != temp_hash)
 				{	// Hashes don't match, clear slave addr and update hash
-					slave_addr = 0;
-					proj_hash = temp_hash; // update local copy
-					sys_event |= FLASH_UPDATE_EVENT;
+//					slave_addr = 0;
+//					proj_hash = temp_hash; // update local copy
+//					sys_event |= FLASH_UPDATE_EVENT;
+					delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
+					delayed_copy_to_flash(&proj_hash, temp_hash,
+							FLASH_UPDATE_EVENT);
 					send_nack
 					;
 				}
