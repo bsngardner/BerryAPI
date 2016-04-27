@@ -264,6 +264,8 @@ __interrupt void USI_TXRX(void)
 			break;
 		case RESET_ALL:
 			slave_addr = 0; // clear slave addr
+			proj_hash = 0; // clear project hash
+			sys_event |= FLASH_UPDATE_EVENT;
 			send_ack
 			;
 			i2cState = I2C_RESET;
@@ -276,31 +278,28 @@ __interrupt void USI_TXRX(void)
 				send_ack
 				;
 				i2cState = I2C_RX;
+				break;
 			}
 			// Got the project hash; check if it matches our own project hash
 			else if (byte_count == 2)
 			{
 				temp_hash = USISRL;
 				if (proj_hash != temp_hash)
-				{
-					// Hashes don't match, clear slave addr and update hash
+				{	// Hashes don't match, clear slave addr and update hash
 					slave_addr = 0;
 					proj_hash = temp_hash; // update local copy
+					sys_event |= FLASH_UPDATE_EVENT;
 					send_nack
 					;
 				}
 				else
-				{
-					// Hashes match, ack
+				{	// Hashes match
 					send_ack
 					;
 				}
 				// reset state machine
 				i2cState = I2C_RESET;
-			}
-			else
-			{
-				i2cState = I2C_RESET;
+				break;
 			}
 			break;
 
