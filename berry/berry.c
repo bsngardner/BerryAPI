@@ -49,10 +49,10 @@ volatile uint16_t tick_speed = 0;
 volatile uint16_t tick_count = 1;
 
 //Persistent memory - DO NOT USE SEGMENT A - IT IS FOR CALIBRATION DATA
-#pragma DATA_SECTION(flash_proj_hash, ".infoC");
-volatile uint8_t flash_proj_hash;
-#pragma DATA_SECTION(flash_slave_addr, ".infoC");
-volatile uint8_t flash_slave_addr;
+#pragma DATA_SECTION(flash_proj_hash, ".infoD");
+volatile uint8_t flash_proj_hash = 0;
+#pragma DATA_SECTION(flash_slave_addr, ".infoD");
+volatile uint8_t flash_slave_addr = 0;
 
 //Local copies of persistent variables
 extern volatile uint8_t proj_hash;
@@ -60,11 +60,10 @@ extern volatile uint8_t slave_addr;
 
 //Function prototypes
 
-
 //Local functions
-static void flash_write_byte( uint16_t address, uint8_t byte );
+static void flash_write_byte(uint16_t address, uint8_t byte);
 static uint8_t flash_read_byte(uint16_t address);
-static void flash_delete_segment( uint16_t segment );
+static void flash_delete_segment(uint16_t segment);
 static void flash_update_event();
 static void project_mem_init();
 
@@ -180,22 +179,19 @@ __interrupt void WDT_ISR(void)
 static void project_mem_init()
 {
 	// Copy project hash and berry address into local memory
-	proj_hash = flash_read_byte((uint16_t)&flash_proj_hash);
-	slave_addr = flash_read_byte((uint16_t)&flash_slave_addr);
+	proj_hash = flash_proj_hash;
+	slave_addr = flash_slave_addr;
 
 	// If slave address is 0xff, it was just programmed and should be reset
 	if (slave_addr > 127)
 	{
-		delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
-		delayed_copy_to_flash(&proj_hash, 0, FLASH_UPDATE_EVENT);
-//		slave_addr = 0;
-//		uint16_t addr = (uint16_t)&flash_slave_addr;
-//		flash_delete_segment(addr);
-//		flash_write_byte(addr, slave_addr);
+		// Immediately clear slave addr and project key
+		slave_addr = proj_hash = 0;
+		flash_update_event();
 	}
 }
 
-static void flash_delete_segment( uint16_t segment )
+static void flash_delete_segment(uint16_t segment)
 { // Argument is an address in desired segment
 	uint8_t *flash_ptr;
 
@@ -208,11 +204,11 @@ static void flash_delete_segment( uint16_t segment )
 
 static uint8_t flash_read_byte(uint16_t address)
 {
-	uint8_t *ptr = (uint8_t*)address;
+	uint8_t *ptr = (uint8_t*) address;
 	return *ptr;
 }
 
-static void flash_write_byte( uint16_t address, uint8_t byte )
+static void flash_write_byte(uint16_t address, uint8_t byte)
 {
 	uint8_t *flash_ptr;
 
@@ -226,15 +222,28 @@ static void flash_write_byte( uint16_t address, uint8_t byte )
 
 static void flash_update_event()
 {
+	short sr = __get_SR_register();
 	__disable_interrupt();
-	flash_delete_segment((uint16_t)&flash_proj_hash); // Erase the segment
-	FCTL3 = FWKEY;                  // Clear lock-bit
-	FCTL1 = (FWKEY | WRT);          // Set write-bit
-	flash_proj_hash = proj_hash; 	// Update project hash in flash
-	flash_slave_addr = slave_addr; 	// Update slave address in flash
+	uint16_t temp = proj_hash | ((uint16_t)slave_addr << 8);
+	uint16_t *ptr = (uint16_t*)(&flash_proj_hash);
+
+	// Erase segment
+	FCTL3 = FWKEY;              	// Clear lock-bit
+	FCTL1 = (FWKEY | ERASE);    	// Set erase-bit
+	*ptr = 0;                 		// Dummy-write to delete segment - CPU hold
+	FCTL3 = FWKEY | LOCK; 			// Lock
+
+	// Write to flash
+	FCTL3 = FWKEY; 					// Unlock
+	FCTL1 = (FWKEY | WRT);			// Enable write bit
+	*ptr = temp;
+//	flash_proj_hash = proj_hash;
+//	flash_slave_addr = slave_addr;
+
+	// Lock flash
 	FCTL1 = FWKEY;                  // Clear write-bit
 	FCTL3 = (FWKEY | LOCK);         // Set lock-bit
-	__enable_interrupt();
+	__bis_SR_register(sr & GIE);
 }
 
 void delayed_copy_to_flash(volatile uint8_t *local_data, uint8_t byte,
@@ -243,6 +252,6 @@ void delayed_copy_to_flash(volatile uint8_t *local_data, uint8_t byte,
 	// update the local copy
 	*local_data = byte;
 
-	// queue flash update event so it will be copied to flash
+	// queue event so data will be copied to flash
 	sys_event |= event;
 }
