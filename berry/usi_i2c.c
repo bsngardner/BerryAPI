@@ -40,16 +40,15 @@ typedef enum
 #define send_nack {SDA_IN; USISRL = 0xFF; USICNT |= 0x01;}// Bit counter = 1, send NAck bit
 
 //Static variables
-volatile static i2c_state_t i2cState = I2C_IDLE;  // State variable
+volatile i2c_state_t i2cState = I2C_IDLE;  // State variable
 static uint8_t global_addr = 0;
 
 //Local copies of persistent variables
 volatile uint8_t proj_hash = 0;
 volatile uint8_t slave_addr = 0;
 
-inline void usi_init()
+void usi_init()
 {
-
 	P1SEL |= SDA_PIN | SCL_PIN;
 	P1SEL2 &= ~(SDA_PIN | SCL_PIN);
 
@@ -87,7 +86,6 @@ inline uint16_t arbitration()
 {
 
 	uint16_t rand_wait = rand() & 0x00FF;
-	//uint16_t rand_wait = 100;
 	set_io_pin();
 
 	while (rand_wait-- > 0)
