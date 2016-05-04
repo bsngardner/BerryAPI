@@ -44,7 +44,7 @@ volatile i2c_state_t i2cState = I2C_IDLE;  // State variable
 static uint8_t global_addr = 0;
 
 //Local copies of persistent variables
-volatile uint8_t proj_hash = 0;
+volatile uint8_t proj_key = 0;
 volatile uint8_t slave_addr = 0;
 
 void usi_init()
@@ -259,7 +259,7 @@ __interrupt void USI_TXRX(void)
 			break;
 		case RESET_ALL:
 			delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
-			delayed_copy_to_flash(&proj_hash, 0, FLASH_UPDATE_EVENT);
+			delayed_copy_to_flash(&proj_key, 0, FLASH_UPDATE_EVENT);
 			send_ack
 			;
 			i2cState = I2C_RESET;
@@ -278,10 +278,10 @@ __interrupt void USI_TXRX(void)
 			else if (byte_count == 2)
 			{
 				temp_hash = USISRL;
-				if (proj_hash != temp_hash)
+				if (proj_key != temp_hash)
 				{	// Hashes don't match, clear slave addr and update hash
 					delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
-					delayed_copy_to_flash(&proj_hash, temp_hash,
+					delayed_copy_to_flash(&proj_key, temp_hash,
 							FLASH_UPDATE_EVENT);
 					send_nack
 					;

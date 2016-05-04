@@ -63,12 +63,12 @@ volatile uint16_t tick_count = 1;
 #pragma DATA_SECTION(persistent_vars, ".infoB");
 struct
 {
-	uint8_t flash_proj_hash;
+	uint8_t flash_proj_key;
 	uint8_t flash_slave_addr;
 } persistent_vars;
 
 // Copies of persistent variables in RAM
-extern volatile uint8_t proj_hash;
+extern volatile uint8_t proj_key;
 extern volatile uint8_t slave_addr;
 
 //Local function prototypes
@@ -176,14 +176,14 @@ void seed_rand()
 static void project_mem_init()
 {
 	// Copy project hash and berry address into local memory
-	proj_hash = persistent_vars.flash_proj_hash;
+	proj_key = persistent_vars.flash_proj_key;
 	slave_addr = persistent_vars.flash_slave_addr;
 
 	// If slave address is 0xff, it was just programmed and should be reset
 	if (slave_addr == 0xff)
 	{
 		// Immediately clear slave addr and project key
-		slave_addr = proj_hash = 0;
+		slave_addr = proj_key = 0;
 		flash_update_event();
 	}
 }
@@ -220,8 +220,8 @@ static void flash_update_event()
 	short sr = __get_SR_register();
 	__disable_interrupt();
 	// erase the segment, then you can write to flash
-	flash_delete_segment((uint16_t) &persistent_vars.flash_proj_hash);
-	flash_write_byte((uint16_t) &persistent_vars.flash_proj_hash, proj_hash);
+	flash_delete_segment((uint16_t) &persistent_vars.flash_proj_key);
+	flash_write_byte((uint16_t) &persistent_vars.flash_proj_key, proj_key);
 	flash_write_byte((uint16_t) &persistent_vars.flash_slave_addr, slave_addr);
 	__bis_SR_register(sr & GIE);
 }
@@ -242,7 +242,7 @@ void delayed_copy_to_flash(volatile uint8_t *local_data, uint8_t byte,
 #pragma vector = WDT_VECTOR
 __interrupt void WDT_ISR(void)
 {
-//	check_timeout();
+	check_timeout();
 	if (tick_speed && !(--tick_count))
 	{
 		tick_count = tick_speed;
