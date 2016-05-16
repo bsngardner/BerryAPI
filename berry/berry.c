@@ -36,10 +36,10 @@ static const struct
 /*  32*FN5 + 16*FN4 + 8*FN3 + 4*FN2 + 2*FN1 + FN0 + 1 */
 static const uint16_t FCTL2_CLK_DIV[] =
 {
-		FWKEY + FSSEL0+ FN1, // DCO 1 MHz, set to MCLK/3
-		FWKEY + FSSEL0+ FN4 + FN2 + FN1 + FN0, // DCO 8 MHz, set to MCLK/24
-		FWKEY + FSSEL0+ FN5 + FN1 + FN0, // DCO 12 MHz, set to MCLK/36
-		FWKEY + FSSEL0+ FN5 + FN3 + FN2 + FN1 + FN0 // DCO 16 MHz, set to MCLK/48
+FWKEY + FSSEL0 + FN1, // DCO 1 MHz, set to MCLK/3
+		FWKEY + FSSEL0 + FN4 + FN2 + FN1 + FN0, // DCO 8 MHz, set to MCLK/24
+		FWKEY + FSSEL0 + FN5 + FN1 + FN0, // DCO 12 MHz, set to MCLK/36
+		FWKEY + FSSEL0 + FN5 + FN3 + FN2 + FN1 + FN0 // DCO 16 MHz, set to MCLK/48
 };
 
 //Const port arrays
@@ -51,21 +51,39 @@ volatile uint8_t* const PxIN[3] =
 { 0, &P1IN, &P2IN };
 
 //Global variables
-volatile uint8_t registers[TABLE_SIZE] =
+volatile uint8_t all_registers[TABLE_SIZE * 2] =
 { 0 };
-volatile uint16_t current_register = 0;
+volatile uint8_t* const registers = all_registers + (TABLE_SIZE);
+volatile int16_t current_register = 0;
+
+//System registers
+#define SLAVE_ADDR -1
+#define PROJ_KEY0 -2
+#define PROJ_KEY1 -3
 
 volatile uint16_t sys_event = 0;
 volatile uint16_t tick_speed = 0;
 volatile uint16_t tick_count = 1;
 
 //Persistent memory - DO NOT USE SEGMENT A - IT IS FOR CALIBRATION DATA
-#pragma DATA_SECTION(persistent_vars, ".infoB");
-struct
+#define SEGMENT_SIZE 64
+typedef union
 {
-	uint8_t flash_proj_key;
-	uint8_t flash_slave_addr;
-} persistent_vars;
+	struct
+	{
+		uint16_t words[2];
+	};
+	struct
+	{
+		uint8_t zero_byte;
+		uint8_t slave_addr;
+		uint16_t proj_key;
+	};
+} flash_var_t; //4 bytes
+
+#define FLASH_MAX_INDEX SEGMENT_SIZE / sizeof(flash_var_t)
+#pragma DATA_SECTION(flash_array, ".infoB");
+flash_var_t flash_array[FLASH_MAX_INDEX];
 
 // Copies of persistent variables in RAM
 extern volatile uint8_t proj_key;
@@ -80,16 +98,16 @@ static void project_mem_init();
 void main()
 {
 	bapi_init();
-	registers[TYPE_REG] = device_init();
+	registers[TYPE] = device_init();
 	tick_count = 1;
 
-	// Read persistent variables into local copies
+// Read persistent variables into local copies
 	project_mem_init();
 
-	// Enable global interrupts after all initialization is finished.
+// Enable global interrupts after all initialization is finished.
 	__enable_interrupt();
 
-	// Wait for an interrupt
+// Wait for an interrupt
 	while (1)
 	{
 		// disable interrupts before check sys_event
@@ -130,6 +148,10 @@ int bapi_init()
 	return 0;
 }
 
+//Used to store position in circular buffer
+static uint16_t flash_index = 0;
+static flash_var_t* flash;
+
 void msp430_init(CLOCK_SPEED clock)
 {
 	WDTCTL = WDTPW + WDTHOLD;            // Stop watchdog
@@ -143,10 +165,26 @@ void msp430_init(CLOCK_SPEED clock)
 	DCOCTL = *dco_cal[clock].caldco;
 	BCSCTL3 = LFXT1S_2; //Select VLO
 
-	// Set Flash Timing Generator (needs to be between 257 and 476 kHz)
+// Set Flash Timing Generator (needs to be between 257 and 476 kHz)
 	FCTL2 = FCTL2_CLK_DIV[clock];
+	//Start at 1 since if index should be 0,
+	//	index 1 will be 0xff
+	int i;
+	for (i = 1; i < FLASH_MAX_INDEX; i++)
+	{
+		if (flash_array[i].zero_byte > 0)
+		{
+			flash_index = i - 1;
+			break;
+		}
+		else if (i >= FLASH_MAX_INDEX)
+		{
+			flash_index = FLASH_MAX_INDEX - 1;
+		}
+	}
+	flash = flash_array + flash_index;
 
-	// configure Watchdog
+// configure Watchdog
 	WDTCTL = WDT_CTL;					// Set Watchdog interval
 	IE1 |= WDTIE;					// Enable WDT interrupt
 }
@@ -175,11 +213,11 @@ void seed_rand()
 
 static void project_mem_init()
 {
-	// Copy project hash and berry address into local memory
-	proj_key = persistent_vars.flash_proj_key;
-	slave_addr = persistent_vars.flash_slave_addr;
+// Copy project hash and berry address into local memory
+	proj_key = flash->proj_key;
+	slave_addr = flash->slave_addr;
 
-	// If slave address is 0xff, it was just programmed and should be reset
+// If slave address is 0xff, it was just programmed and should be reset
 	if (slave_addr == 0xff)
 	{
 		// Immediately clear slave addr and project key
@@ -215,24 +253,41 @@ static void flash_write_byte(uint16_t address, uint8_t byte)
 	FCTL3 = (FWKEY | LOCK);         // Set lock-bit
 }
 
+static void flash_write_word(uint16_t* ptr, uint16_t word)
+{
+	FCTL3 = FWKEY;                  // Clear lock-bit
+	FCTL1 = (FWKEY | WRT);          // Set write-bit
+	*ptr = word;              // Write byte - CPU hold
+	while ((BUSY & FCTL3))
+		;
+	FCTL1 = FWKEY;                  // Clear write-bit
+	FCTL3 = (FWKEY | LOCK);         // Set lock-bit
+}
+
 static void flash_update_event()
 {
 	short sr = __get_SR_register();
 	__disable_interrupt();
-	// erase the segment, then you can write to flash
-	flash_delete_segment((uint16_t) &persistent_vars.flash_proj_key);
-	flash_write_byte((uint16_t) &persistent_vars.flash_proj_key, proj_key);
-	flash_write_byte((uint16_t) &persistent_vars.flash_slave_addr, slave_addr);
+// erase the segment, then you can write to flash
+	if (++flash_index >= FLASH_MAX_INDEX)
+	{
+		flash_delete_segment((uint16_t) flash_array);
+		flash_index = 0;
+	}
+	flash = flash_array + flash_index;
+	flash_write_word(flash->words, (uint16_t) slave_addr);
+	flash_write_word(flash->words + 1, proj_key);
+
 	__bis_SR_register(sr & GIE);
 }
 
 void delayed_copy_to_flash(volatile uint8_t *local_data, uint8_t byte,
 		uint16_t event)
 {
-	// update the local copy
+// update the local copy
 	*local_data = byte;
 
-	// queue event so data will be copied to flash
+// queue event so data will be copied to flash
 	sys_event |= event;
 }
 

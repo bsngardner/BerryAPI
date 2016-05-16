@@ -10,7 +10,8 @@
 #include <stdint.h>
 
 //Typedef for clock speed adjustment
-typedef enum {
+typedef enum
+{
 	_1MHZ, _8MHZ, _12MHZ, _16MHZ
 } CLOCK_SPEED;
 
@@ -19,8 +20,8 @@ typedef enum {
 #define LED0_PIN BIT6
 
 //Universally defined registers
-#define TYPE_REG 0
-#define STATUS_REG 1
+#define STATUS 1
+#define TYPE 0
 
 //Watchdog defines
 #define WDT_HZ 200
@@ -47,8 +48,8 @@ void set_register(uint8_t value);
 uint8_t get_register();
 
 //Variable externs
-extern volatile uint8_t registers[TABLE_SIZE];
-extern volatile uint16_t current_register;
+extern volatile uint8_t* const registers;
+extern volatile int16_t current_register;
 extern volatile uint16_t tick_speed;
 
 #endif /* BERRY_H_ */
