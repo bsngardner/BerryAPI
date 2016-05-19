@@ -36,10 +36,10 @@ void port_init();
 //defines
 #define DEV_TYPE 6
 
-#define COND_BIT(bool,byte,mask) (byte ^= ((-bool) ^ (byte)) & (mask))
 //Register table mapped to PxOUT
 
-void port_init() {
+void port_init()
+{
 	P1OUT |= SW0;
 	P1DIR &= ~SW0;
 	P1REN |= SW0;
@@ -47,18 +47,22 @@ void port_init() {
 	P1IE |= SW0;
 }
 
-uint8_t device_init() {
+uint8_t device_init()
+{
 	port_init();
-	tick_speed = WDT_HZ/2;
+	tick_speed = WDT_HZ / 2;
 	return DEV_TYPE;
 }
 
-void tick() {
+void tick()
+{
 	P2OUT ^= LED0_PIN;
 }
 
-void set_register(uint8_t value) {
-	switch (current_register) {
+void set_register(uint8_t value)
+{
+	switch (current_register)
+	{
 	case 2:
 		//reg_table.table[2] = value;
 		break;
@@ -68,8 +72,10 @@ void set_register(uint8_t value) {
 	return;
 }
 
-uint8_t get_register() {
-	switch (current_register) {
+uint8_t get_register()
+{
+	switch (current_register)
+	{
 	case 2:
 		return registers[2];
 	default:
@@ -80,12 +86,16 @@ uint8_t get_register() {
 #define test(byte,bit) (byte & bit)
 
 #pragma vector = PORT1_VECTOR
-__interrupt void p1_isr(void) {
+__interrupt void p1_isr(void)
+{
 	P1IFG &= ~SW0;
-	if (test(P1IN, SW0)) {
+	if (test(P1IN, SW0))
+	{
 		P1IES |= SW0;
 		registers[2] = 0;
-	} else {
+	}
+	else
+	{
 		P1IES &= ~SW0;
 		registers[2] = 1;
 	}

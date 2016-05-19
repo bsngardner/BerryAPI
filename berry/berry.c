@@ -12,6 +12,9 @@
 #include "berry.h"
 #include "usi_i2c.h"
 
+//local macros
+#define COND_BIT(bool,byte,mask) (byte ^= ((-bool) ^ (byte)) & (mask))
+
 //Prototypes
 int bapi_init();
 void seed_rand();
@@ -90,7 +93,8 @@ extern volatile uint8_t proj_key;
 extern volatile uint8_t slave_addr;
 
 //Local function prototypes
-static void flash_write_byte(uint16_t address, uint8_t byte);
+//static void flash_write_byte(uint16_t address, uint8_t byte);
+static void flash_write_word(uint16_t* ptr, uint16_t word);
 static void flash_delete_segment(uint16_t segment);
 static void flash_update_event();
 static void project_mem_init();
@@ -137,6 +141,38 @@ void main()
 		}
 
 	}
+}
+
+void sys_set_register(uint8_t value)
+{
+	switch (current_register)
+	{
+	case TYPE:
+		//Dont change my type!!!
+		return;
+	case STATUS:
+		registers[STATUS] = value;
+		//conditionally set or clear status led according to value
+		COND_BIT(value, *PxOUT[LED0_PORT], LED0_PIN);
+		return;
+	default:
+		break;
+	}
+	return;
+}
+
+uint8_t sys_get_register()
+{
+	switch (current_register)
+	{
+	case TYPE:
+		return registers[TYPE];
+	case STATUS:
+		return registers[STATUS];
+	default:
+		break;
+	}
+	return 0;
 }
 
 int bapi_init()
@@ -239,19 +275,21 @@ static void flash_delete_segment(uint16_t segment)
 	FCTL3 = (FWKEY | LOCK);         // Set lock-bit
 }
 
+#if 0
 static void flash_write_byte(uint16_t address, uint8_t byte)
 {
 	uint8_t *flash_ptr;
 
 	flash_ptr = (uint8_t*) address; // Initialize pointer
-	FCTL3 = FWKEY;                  // Clear lock-bit
-	FCTL1 = (FWKEY | WRT);          // Set write-bit
-	*flash_ptr = byte;              // Write byte - CPU hold
+	FCTL3 = FWKEY;// Clear lock-bit
+	FCTL1 = (FWKEY | WRT);// Set write-bit
+	*flash_ptr = byte;// Write byte - CPU hold
 	while ((BUSY & FCTL3))
-		;
-	FCTL1 = FWKEY;                  // Clear write-bit
-	FCTL3 = (FWKEY | LOCK);         // Set lock-bit
+	;
+	FCTL1 = FWKEY;// Clear write-bit
+	FCTL3 = (FWKEY | LOCK);// Set lock-bit
 }
+#endif
 
 static void flash_write_word(uint16_t* ptr, uint16_t word)
 {

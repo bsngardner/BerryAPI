@@ -30,7 +30,8 @@ typedef enum
 #define GEN_CALL 0x00
 #define NEW_ADDR 0x00
 #define RESET_ALL 0x01
-#define VERIFY_PROJECT_HASH 0x02
+#define VERIFY_PROJECT_KEY 0x02
+#define UPDATE_PROJECT_KEY 0x03
 
 //Macros
 #define SDA_OUT USICTL0 |= USIOE
@@ -201,10 +202,8 @@ __interrupt void USI_TXRX(void)
 		}
 		else
 		{
-			if (current_register == 0)
-				registers[0] = USISRL;
-			else if (current_register == 1)
-				registers[1] = USISRL;
+			if (current_register < 2)
+				sys_set_register(USISRL);
 			else
 				set_register(USISRL);
 		}
@@ -243,7 +242,7 @@ __interrupt void USI_TXRX(void)
 					if (arbitration())
 					{
 						delayed_copy_to_flash(&slave_addr, USISRL,
-								FLASH_UPDATE_EVENT);
+						FLASH_UPDATE_EVENT);
 						send_ack
 						;
 					}
@@ -265,7 +264,7 @@ __interrupt void USI_TXRX(void)
 			i2cState = I2C_RESET;
 			break;
 
-		case VERIFY_PROJECT_HASH:
+		case VERIFY_PROJECT_KEY:
 			// Get the next byte (project hash)
 			if (byte_count == 1)
 			{
@@ -282,7 +281,7 @@ __interrupt void USI_TXRX(void)
 				{	// Hashes don't match, clear slave addr and update hash
 					delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
 					delayed_copy_to_flash(&proj_key, temp_hash,
-							FLASH_UPDATE_EVENT);
+					FLASH_UPDATE_EVENT);
 					send_nack
 					;
 				}
@@ -291,6 +290,29 @@ __interrupt void USI_TXRX(void)
 					send_ack
 					;
 				}
+				// reset state machine
+				i2cState = I2C_RESET;
+				break;
+			}
+			break;
+
+		case UPDATE_PROJECT_KEY:
+			// Get the next byte (project hash)
+			if (byte_count == 1)
+			{
+				send_ack
+				;
+				i2cState = I2C_RX;
+				break;
+			}
+			// Got the project hash; check if it matches our own project hash
+			else if (byte_count == 2)
+			{
+				temp_hash = USISRL;
+				delayed_copy_to_flash(&proj_key, temp_hash,
+				FLASH_UPDATE_EVENT);
+				send_ack
+				;
 				// reset state machine
 				i2cState = I2C_RESET;
 				break;
@@ -312,10 +334,8 @@ __interrupt void USI_TXRX(void)
 		/* no break */
 	case I2C_TX:
 		SDA_OUT;
-		if (current_register == 0)
-			USISRL = registers[0];
-		else if (current_register == 1)
-			USISRL = registers[1];
+		if (current_register < 2)
+			USISRL = sys_get_register();
 		else
 			USISRL = get_register();
 		USICNT |= 0x08;

@@ -41,6 +41,10 @@ void main();
 void delayed_copy_to_flash(volatile uint8_t *local_data, uint8_t byte,
 		uint16_t event);
 
+//Internal functions
+void sys_set_register(uint8_t value);
+uint8_t sys_get_register();
+
 //Function Prototypes -- must be declared by user
 uint8_t device_init();
 void tick();
