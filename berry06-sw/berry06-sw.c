@@ -56,7 +56,7 @@ uint8_t device_init()
 
 void tick()
 {
-	P2OUT ^= LED0_PIN;
+
 }
 
 void set_register(uint8_t value)

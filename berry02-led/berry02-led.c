@@ -50,13 +50,13 @@ inline void port_init()
 uint8_t device_init()
 {
 	port_init();
-	tick_speed = WDT_HZ/2;
+	tick_speed = WDT_HZ / 2;
 	return DEV_TYPE;
 }
 
 void tick()
 {
-	P2OUT ^= LED0_PIN;
+
 }
 
 void set_register(uint8_t value)
