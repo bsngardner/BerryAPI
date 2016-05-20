@@ -78,8 +78,8 @@ typedef union
 	};
 	struct
 	{
-		uint8_t zero_byte;
 		uint8_t slave_addr;
+		uint8_t zero_byte;
 		uint16_t proj_key;
 	};
 } flash_var_t; //4 bytes
@@ -139,7 +139,6 @@ void main()
 			sys_event &= ~FLASH_UPDATE_EVENT;
 			flash_update_event();
 		}
-
 	}
 }
 
