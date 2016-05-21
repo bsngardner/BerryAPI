@@ -86,7 +86,7 @@ inline reset_i2c_pin()
 inline uint16_t arbitration()
 {
 
-	uint16_t rand_wait = rand() & 0x00FF;
+	uint16_t rand_wait = rand();
 	set_io_pin();
 
 	while (rand_wait-- > 0)
