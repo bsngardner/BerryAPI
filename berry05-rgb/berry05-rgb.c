@@ -85,33 +85,36 @@ uint8_t device_init()
 	rgb.first = 0;
 	timera_init();
 
-	tick_max = WDT_HZ / 2;
-	reg_table.table[RED_R] = 64;
-	reg_table.table[GRN_R] = 128;
-	reg_table.table[BLU_R] = 160;
+	tick_speed = WDT_HZ / 2;
+	registers[RED_R] = 200;
+	registers[GRN_R] = 255;
+	registers[BLU_R] = 160;
 	return DEV_TYPE;
 }
 
 void tick()
 {
-	P2OUT ^= BIT6;
+	P2OUT ^= LED0_PIN;
 }
 
 void set_register(uint8_t value)
 {
-	switch (reg_table.current)
+	switch (current_register)
 	{
 	case RED_R:	//Red LED
-		reg_table.table[RED_R] = value;
-		reg_table.current = GRN_R;
+		rgb.changed = 1;
+		registers[RED_R] = value;
+		current_register = GRN_R;
 		break;
 	case GRN_R:	//LED 2
-		reg_table.table[GRN_R] = value;
-		reg_table.current = BLU_R;
+		rgb.changed = 1;
+		registers[GRN_R] = value;
+		current_register = BLU_R;
 		break;
 	case BLU_R:	//LED 3
-		reg_table.table[BLU_R] = value;
-		reg_table.current = RED_R;
+		rgb.changed = 1;
+		registers[BLU_R] = value;
+		current_register = RED_R;
 		break;
 	default:
 		//registers.current++;
@@ -121,17 +124,17 @@ void set_register(uint8_t value)
 
 uint8_t get_register()
 {
-	switch (reg_table.current)
+	switch (current_register)
 	{
 	case RED_R:	//LED 1
-		reg_table.current++;
-		return reg_table.table[RED_R];
+		current_register++;
+		return registers[RED_R];
 	case GRN_R:	//LED 2
-		reg_table.current++;
-		return reg_table.table[GRN_R];
+		current_register++;
+		return registers[GRN_R];
 	case BLU_R:	//LED 3
-		reg_table.current++;
-		return reg_table.table[BLU_R];
+		current_register++;
+		return registers[BLU_R];
 	default:
 		//registers.current++;
 		break;
@@ -178,11 +181,11 @@ __interrupt void TIMER_A1_ISR(void)
 			second = color_buf + 1;
 			third = color_buf + 2;
 			first->color = RED_L;
-			first->value = reg_table.table[RED_R];
+			first->value = registers[RED_R];
 			second->color = GRN_L;
-			second->value = reg_table.table[GRN_R];
+			second->value = registers[GRN_R];
 			third->color = BLU_L;
-			third->value = reg_table.table[BLU_R];
+			third->value = registers[BLU_R];
 
 			//Load gamma corrected values into struct
 			uint16_t index, fraction;
