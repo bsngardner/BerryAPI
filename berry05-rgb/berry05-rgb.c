@@ -94,7 +94,6 @@ uint8_t device_init()
 
 void tick()
 {
-	P2OUT ^= LED0_PIN;
 }
 
 void set_register(uint8_t value)
@@ -145,16 +144,20 @@ uint8_t get_register()
 #pragma vector = TIMER0_A0_VECTOR
 __interrupt void TIMER_A0_ISR(void)
 {
-	P1OUT |= current->color;
-	current = current->next;
 	if (current)
-		TACCR0 = current->value;
+	{
+		P1OUT |= current->color;
+		current = current->next;
+		if (current)
+			TACCR0 = current->value;
+	}
 }
 #define NONE 0x00
 #define CC1_IV 0x02
 #define CC2_IV 0x04
 #define TA_IV 0x0A
 
+#define AVE(v1,v2) (((v1) >> 1) + ((v2) >> 1) + ((v1) & (v2) & 0x0001))
 #define SWAP(x,y) {temp = x; x = y; y = temp;}
 static volatile color_pair_t *first, *second, *third, *temp;
 #pragma vector = TIMER0_A1_VECTOR
@@ -201,18 +204,22 @@ __interrupt void TIMER_A1_ISR(void)
 					color_buf[i].value = log_table[index];
 					break;
 				case 0x01:
-					part = log_table[index] >> 1;
-					color_buf[i].value = part
-							+ (part + log_table[index + 1] >> 1) >> 1;
+					part = log_table[index];
+					color_buf[i].value = AVE(part,
+							AVE(part,log_table[index+1]));
+					//color_buf[i].value = (part
+					//		+ (part + log_table[index + 1] >> 1)) >> 1;
 					break;
 				case 0x02:
-					color_buf[i].value = (log_table[index] >> 1)
-							+ (log_table[index + 1] >> 1);
+					part = log_table[index];
+					color_buf[i].value = AVE(part, log_table[index + 1]);
+					//color_buf[i].value = (part + log_table[index + 1]) >> 1;
 					break;
 				case 0x03:
-					part = log_table[index + 1] >> 1;
-					color_buf[i].value = part + (part + log_table[index] >> 1)
-							>> 1;
+					part = log_table[index + 1];
+					color_buf[i].value = AVE(part, AVE(part,log_table[index]));
+					//color_buf[i].value = (part + (part + log_table[index] >> 1))
+					//		>> 1;
 					break;
 				default:
 					break;
@@ -266,6 +273,10 @@ __interrupt void TIMER_A1_ISR(void)
 		{
 			TACCTL0 = CCIE;
 			TACCR0 = current->value;
+		}
+		else
+		{
+			TACCR0 = 65535;
 		}
 
 		break;
