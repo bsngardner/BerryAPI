@@ -212,11 +212,12 @@ void msp430_init(CLOCK_SPEED clock)
 			flash_index = i - 1;
 			break;
 		}
-		else if (i >= FLASH_MAX_INDEX)
-		{
-			flash_index = FLASH_MAX_INDEX - 1;
-		}
 	}
+	if (i >= FLASH_MAX_INDEX)
+	{
+		flash_index = FLASH_MAX_INDEX - 1;
+	}
+
 	flash = flash_array + flash_index;
 
 // configure Watchdog
