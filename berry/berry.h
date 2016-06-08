@@ -38,7 +38,7 @@ typedef enum
 
 //available functions
 void main();
-void delayed_copy_to_flash(volatile uint8_t *local_data, uint8_t byte,
+void delayed_copy_to_flash(volatile uint16_t *local_data, uint16_t byte,
 		uint16_t event);
 
 //Internal functions

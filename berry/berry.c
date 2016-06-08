@@ -78,8 +78,7 @@ typedef union
 	};
 	struct
 	{
-		uint8_t slave_addr;
-		uint8_t zero_byte;
+		uint16_t slave_addr;
 		uint16_t proj_key;
 	};
 } flash_var_t; //4 bytes
@@ -89,8 +88,8 @@ typedef union
 flash_var_t flash_array[FLASH_MAX_INDEX];
 
 // Copies of persistent variables in RAM
-extern volatile uint8_t proj_key;
-extern volatile uint8_t slave_addr;
+extern volatile uint16_t proj_key;
+extern volatile uint16_t slave_addr;
 
 //Local function prototypes
 //static void flash_write_byte(uint16_t address, uint8_t byte);
@@ -207,7 +206,7 @@ void msp430_init(CLOCK_SPEED clock)
 	int i;
 	for (i = 1; i < FLASH_MAX_INDEX; i++)
 	{
-		if (flash_array[i].zero_byte > 0)
+		if ((flash_array[i].slave_addr & 0xff00) > 0)
 		{
 			flash_index = i - 1;
 			break;
@@ -253,8 +252,8 @@ static void project_mem_init()
 	proj_key = flash->proj_key;
 	slave_addr = flash->slave_addr;
 
-// If slave address is 0xff, it was just programmed and should be reset
-	if (slave_addr == 0xff)
+// If slave address is 0xffff, it was just programmed and should be reset
+	if (slave_addr == 0xffff)
 	{
 		// Immediately clear slave addr and project key
 		slave_addr = proj_key = 0;
@@ -313,17 +312,17 @@ static void flash_update_event()
 		flash_index = 0;
 	}
 	flash = flash_array + flash_index;
-	flash_write_word(flash->words, (uint16_t) slave_addr);
+	flash_write_word(flash->words, slave_addr);
 	flash_write_word(flash->words + 1, proj_key);
 
 	__bis_SR_register(sr & GIE);
 }
 
-void delayed_copy_to_flash(volatile uint8_t *local_data, uint8_t byte,
+void delayed_copy_to_flash(volatile uint16_t *local_data, uint16_t new_data,
 		uint16_t event)
 {
 // update the local copy
-	*local_data = byte;
+	*local_data = new_data;
 
 // queue event so data will be copied to flash
 	sys_event |= event;
