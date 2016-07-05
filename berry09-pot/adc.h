@@ -5,6 +5,9 @@
  *      Author: Broderick
  */
 
-#define ADC_IN
+#include <stdint.h>
+#include "berry.h"
+
+#define ADC_INPUT 3
 
 void adc_init();
