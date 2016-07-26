@@ -23,6 +23,10 @@ typedef enum
 #define STATUS 1
 #define TYPE 0
 
+// p1.5 is vine interrupt line - low asserted
+#define ASSERT_INTR 	P1OUT &= ~BIT5
+#define RELEASE_INTR	P1OUT |= BIT5
+
 //Watchdog defines
 #define WDT_HZ 200
 #define WDT_CTL WDT_ADLY_1_9
@@ -53,7 +57,7 @@ uint8_t get_register();
 
 //Variable externs
 extern volatile uint8_t* const registers;
-extern volatile int16_t current_register;
+extern volatile int8_t current_register;
 extern volatile uint16_t tick_speed;
 
 #endif /* BERRY_H_ */
