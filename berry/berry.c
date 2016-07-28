@@ -243,10 +243,11 @@ void msp430_init(CLOCK_SPEED clock)
 
 void gpio_port_init()
 {
-	P1OUT = P2OUT = 0;
 	P2SEL = P2SEL2 = P1SEL = P1SEL2 = 0;
-	P1DIR = P2DIR = 0xFF;
-	RELEASE_INTR;
+	// interrupt pin is input (high impedance) until it needs to be asserted
+	P1DIR = 0xFF & ~BINT_PIN;
+	P2DIR = 0xFF;
+	P1OUT =	P2OUT = 0;
 
 	*PxDIR[LED0_PORT] |= LED0_PIN;
 	*PxOUT[LED0_PORT] |= LED0_PIN;

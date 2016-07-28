@@ -19,13 +19,17 @@ typedef enum
 #define LED0_PORT 2
 #define LED0_PIN BIT6
 
+//Interrupt
+#define BINT_PORT 1
+#define BINT_PIN BIT5
+
 //Universally defined registers
 #define STATUS 1
 #define TYPE 0
 
 // p1.5 is vine interrupt line - low asserted
-#define ASSERT_INTR 	P1OUT &= ~BIT5
-#define RELEASE_INTR	P1OUT |= BIT5
+#define ASSERT_INTR 	(P1DIR |= BINT_PIN) // make it an output
+#define RELEASE_INTR	(P1DIR &= ~BINT_PIN) // high impedance input
 
 //Watchdog defines
 #define WDT_HZ 200

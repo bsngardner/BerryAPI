@@ -72,14 +72,14 @@ void tick()
 		if (registers[-4] & SWITCH_PRESSED)
 		{
 			registers[-5] |= SWITCH_PRESSED;
-			P1OUT &= ~BIT5; // low asserted interrupt
+			P1DIR |= BIT5;
 		}
 		break;
 	case RELEASED:
 		if (registers[-4] & SWITCH_RELEASED)
 		{
 			registers[-5] |= SWITCH_RELEASED;
-			P1OUT &= ~BIT5;
+			P1DIR |= BIT5;
 		}
 		break;
 	default:
