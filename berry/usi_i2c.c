@@ -18,12 +18,13 @@ typedef enum
 	I2C_ADDR = 4,
 	I2C_RX = 6,
 	I2C_HANDLE_RX = 8,
-	I2C_HANDLE_GLOBAL = 10,
-	I2C_READ_STOP = 12,
-	I2C_TX = 14,
-	I2C_RX_NACK = 16,
-	I2C_HANDLE_NACK = 18,
-	I2C_RESET = 20
+	I2C_HANDLE_BUBBLE = 10,
+	I2C_HANDLE_GLOBAL = 12,
+	I2C_READ_STOP = 14,
+	I2C_TX = 16,
+	I2C_RX_NACK = 18,
+	I2C_HANDLE_NACK = 20,
+	I2C_RESET = 22
 } i2c_state_t;
 
 //Defines
@@ -129,8 +130,9 @@ __interrupt void USI_TXRX(void)
 
 	static uint8_t byte_count = 0;
 	static uint8_t cmd;
-	uint16_t addr;
+	static uint16_t addr;
 	static uint16_t temp_key;
+	static uint8_t read_bubble_seven_bits = 0;
 
 	timeout_cnt = USI_TIMEOUT;
 
@@ -139,7 +141,7 @@ __interrupt void USI_TXRX(void)
 		i2cState = I2C_START;                     // Enter 1st state on start
 	}
 
-	switch (__even_in_range(i2cState, 22))
+	switch (__even_in_range(i2cState, 24))
 	{
 	case I2C_IDLE: // 0 Idle, should not get here
 		break;
@@ -212,6 +214,23 @@ __interrupt void USI_TXRX(void)
 		send_ack
 		;
 		break;
+	case I2C_HANDLE_BUBBLE:
+		if (read_bubble_seven_bits)
+		{
+			// Read 7 bits, then go to arbitration
+			SDA_IN;
+			USICNT |= 0x07;
+			i2cState = I2C_HANDLE_GLOBAL;
+			read_bubble_seven_bits = 0;
+		}
+		else
+		{
+			// The last bit of the bubble was read; we need to ack and reset
+			send_ack
+			;
+			i2cState = I2C_RESET;
+		}
+		break;
 	case I2C_HANDLE_GLOBAL:
 		byte_count++;
 		if (byte_count == 1)
@@ -234,15 +253,26 @@ __interrupt void USI_TXRX(void)
 				{
 					send_ack
 					;
-					i2cState = I2C_RX;
+					i2cState = I2C_RX; // need to read the slave address next
 					break;
 				}
 				else if (byte_count == 2)
 				{
+					// Read slave address into temporary variable, then handle
+					// the 7 bits that come before arbitration.
+					addr = USISRL;
+					send_ack
+					;
+					read_bubble_seven_bits = 1;
+					i2cState = I2C_HANDLE_BUBBLE;
+					break;
+				}
+				else if (byte_count == 3)
+				{
 					if (arbitration())
 					{
-						delayed_copy_to_flash(&slave_addr, USISRL,
-						FLASH_UPDATE_EVENT);
+						delayed_copy_to_flash(&slave_addr, addr,
+								FLASH_UPDATE_EVENT);
 						send_ack
 						;
 					}
@@ -251,7 +281,10 @@ __interrupt void USI_TXRX(void)
 						send_nack
 						;
 					}
-					i2cState = I2C_RESET;
+					// The last bit of the bubble still needs to be read
+					SDA_IN;
+					USICNT |= 0x01;
+					i2cState = I2C_HANDLE_BUBBLE;
 					break;
 				}
 			}
