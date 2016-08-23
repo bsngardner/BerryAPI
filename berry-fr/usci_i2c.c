@@ -18,6 +18,9 @@
 extern volatile uint16_t proj_key;
 extern volatile uint16_t slave_addr;
 
+void sys_set_register(uint8_t value);
+uint8_t sys_get_register();
+
 void usci_init()
 {
 	UCB0CTLW0 = UCSWRST; //Module in reset
@@ -232,7 +235,9 @@ __interrupt void usci_b0_isr(void)
 		else
 		{
 			if (usci_state == RX_1)
-				current_register = UCB0RXBUF;
+				current_register = (int16_t) ((int8_t) UCB0RXBUF);
+			else if (current_register < 2)
+				sys_set_register(UCB0RXBUF);
 			else
 				set_register(UCB0RXBUF);
 		}
@@ -241,7 +246,10 @@ __interrupt void usci_b0_isr(void)
 
 	case UCBIV_TX:
 		usci_state = TX;
-		UCB0TXBUF = get_register();
+		if (current_register < 2)
+			UCB0TXBUF = sys_get_register();
+		else
+			UCB0TXBUF = get_register();
 		break;
 	case UCBIV_BIT9:
 
