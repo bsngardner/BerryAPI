@@ -15,6 +15,13 @@
 //local macros
 #define COND_BIT(bool,byte,mask) (byte ^= ((-bool) ^ (byte)) & (mask))
 
+//System registers
+#define SLAVE_ADDR -1
+#define PROJ_KEY0 -2
+#define PROJ_KEY1 -3
+#define INT_ENABLE -4
+#define INTERRUPT -5
+
 //Prototypes
 int bapi_init();
 void seed_rand();
@@ -57,12 +64,7 @@ volatile uint8_t* const PxIN[3] =
 volatile uint8_t all_registers[TABLE_SIZE * 2] =
 { 0 };
 volatile uint8_t* const registers = all_registers + (TABLE_SIZE);
-volatile int16_t current_register = 0;
-
-//System registers
-#define SLAVE_ADDR -1
-#define PROJ_KEY0 -2
-#define PROJ_KEY1 -3
+volatile int8_t current_register = 0;
 
 volatile uint16_t sys_event = 0;
 volatile uint16_t tick_speed = 0;
@@ -153,6 +155,12 @@ void sys_set_register(uint8_t value)
 		//conditionally set or clear status led according to value
 		COND_BIT(value, *PxOUT[LED0_PORT], LED0_PIN);
 		return;
+	case INT_ENABLE:
+		registers[INT_ENABLE] = value;
+		return;
+	case INTERRUPT:
+		//Read only!
+		return;
 	default:
 		break;
 	}
@@ -161,12 +169,21 @@ void sys_set_register(uint8_t value)
 
 uint8_t sys_get_register()
 {
+	uint8_t ret;
 	switch (current_register)
 	{
 	case TYPE:
 		return registers[TYPE];
 	case STATUS:
 		return registers[STATUS];
+	case INT_ENABLE:
+		return registers[INT_ENABLE];
+	case INTERRUPT:
+		//Release interrupt line and clear interrupts when read
+		RELEASE_INTR;
+		ret = registers[INTERRUPT];
+		registers[INTERRUPT] = 0;
+		return ret;
 	default:
 		break;
 	}
@@ -226,9 +243,11 @@ void msp430_init(CLOCK_SPEED clock)
 
 void gpio_port_init()
 {
-	P1OUT = P2OUT = 0;
 	P2SEL = P2SEL2 = P1SEL = P1SEL2 = 0;
-	P1DIR = P2DIR = 0xFF;
+	// interrupt pin is input (high impedance) until it needs to be asserted
+	P1DIR = 0xFF & ~BINT_PIN;
+	P2DIR = 0xFF;
+	P1OUT =	P2OUT = 0;
 
 	*PxDIR[LED0_PORT] |= LED0_PIN;
 	*PxOUT[LED0_PORT] |= LED0_PIN;

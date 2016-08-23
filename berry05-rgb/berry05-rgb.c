@@ -3,7 +3,7 @@
  *
  */
 
-#include <msp430.h> 
+#include <msp430.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include "string.h"
@@ -86,9 +86,9 @@ uint8_t device_init()
 	timera_init();
 
 	tick_speed = WDT_HZ / 2;
-	registers[RED_R] = 200;
-	registers[GRN_R] = 255;
-	registers[BLU_R] = 160;
+	registers[RED_R] = 0;
+	registers[GRN_R] = 0;
+	registers[BLU_R] = 0;
 	return DEV_TYPE;
 }
 
