@@ -34,23 +34,23 @@ volatile uint16_t adc_index = 0;
 #endif
 
 //SMCLK source, divide by 8,
-#define TA_CTL (TASSEL__SMCLK | ID_3 | MC_1 | TACLR)
+#define TB_CTL (TBSSEL__SMCLK | TBIDEX__8 | MC_1 | TBCLR)
 
 //Reset/Set
-#define TA_CCTL1 (OUTMOD_7)
+#define TB_CCTL1 (OUTMOD_7)
 
 #define SAMPLE_PERIOD 150
 #define ASSERT_TIME 1
 
-//init the timer A module
-static void timera_init()
+//init the timer B module
+static void timerb_init()
 {
-	TA0CCR0 = 0;
-	TA0CTL = TA_CTL;
-	TA0CCTL0 = 0;
-	TA0CCTL1 = TA_CCTL1;
-	TA0CCR1 = ASSERT_TIME;
-	TA0CCR0 = SAMPLE_PERIOD;
+	TB0CCR0 = 0;
+	TB0CTL = TB_CTL;
+	TB0CCTL0 = 0;
+	TB0CCTL1 = TB_CCTL1;
+	TB0CCR1 = ASSERT_TIME;
+	TB0CCR0 = SAMPLE_PERIOD;
 }
 
 volatile uint16_t dest[16] =
@@ -72,7 +72,7 @@ static void dma_init()
 //	enable interrupt
 #define ADC_CTL0 (ADC10SHT_0 | ADC10ON)
 
-//Choose input channel, TimerA.OUT1 as trigger, divide clock by 6,
+//Choose input channel, TimerB.OUT1 as trigger, divide clock by 6,
 //	choose MCLK as input (could change to SMCLK or ADC10OSC), repeat single channel
 #define ADC_CTL1 (ADC10SHS_1 | ADC10SHP | ADC10DIV_0 | ADC10SSEL_2 | ADC10CONSEQ_2)
 
@@ -94,7 +94,7 @@ void adc_init()
 	ADC10MCTL0 = (ADC10SREF_0 | ADC10INCH_3);
 	ADC10IE |= ADC10IE0;
 
-	timera_init();
+	timerb_init();
 
 	ADC10CTL0 |= ADC10ENC; //Enable ADC
 
