@@ -50,11 +50,11 @@ const int led0_pin = BIT1;
 uint8_t device_init()
 {
 	// todo: initialize pins
-	P1DIR |= VCC_PIN | GND_PINS; // vcc at top of voltage divider
-	P1OUT |= VCC_PIN;
-	P1OUT &= ~GND_PINS;
+//	P1DIR |= VCC_PIN | GND_PINS; // vcc at top of voltage divider
+//	P1OUT |= VCC_PIN;
+//	P1OUT &= ~GND_PINS;
 
-	adc_init();
+//	adc_init();
 
 	return DEV_TYPE;
 }
