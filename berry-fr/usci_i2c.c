@@ -160,17 +160,17 @@ __interrupt void usci_b0_isr(void)
 				{
 				//New address response, including arbitration
 				case NEW_ADDR:
-					if (byte_count > 2)
-					{
-						rxData = UCB0RXBUF;
-						break; //If this is byte number 3 or more, ignore the byte
-					}
-
-					if (slave_addr)
+					if (!addr_change && slave_addr)
 					{
 						SEND_NACK;
 						rxData = UCB0RXBUF;
 						break;
+					}
+
+					if (byte_count > 2)
+					{
+						rxData = UCB0RXBUF;
+						break; //If this is byte number 3 or more, ignore the byte
 					}
 
 					while (!CLOCK_HELD)

@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "berry.h"
+#include "pins.h"
 #include "usci_i2c.h"
 
 //local macros
@@ -37,11 +38,6 @@ volatile uint8_t all_registers[TABLE_SIZE * 2] =
 { 0 };
 volatile uint8_t* const registers = all_registers + (TABLE_SIZE);
 volatile int16_t current_register = 0;
-
-//System registers
-#define SLAVE_ADDR -1
-#define PROJ_KEY0 -2
-#define PROJ_KEY1 -3
 
 volatile uint16_t sys_event = 0;
 volatile uint16_t tick_speed = 0;
@@ -105,6 +101,12 @@ void sys_set_register(uint8_t value)
 		//conditionally set or clear status led according to value
 		COND_BIT(value, *PxOUT[led0_port], led0_pin);
 		return;
+	case INT_ENABLE:
+		registers[INT_ENABLE] = value;
+		return;
+	case INTERRUPT:
+		//Read only!
+		return;
 	default:
 		break;
 	}
@@ -113,12 +115,21 @@ void sys_set_register(uint8_t value)
 
 uint8_t sys_get_register()
 {
+	uint8_t ret;
 	switch (current_register)
 	{
 	case TYPE:
 		return registers[TYPE];
 	case STATUS:
 		return registers[STATUS];
+	case INT_ENABLE:
+		return registers[INT_ENABLE];
+	case INTERRUPT:
+		//Release interrupt line and clear interrupts when read
+		RELEASE_INTR;
+		ret = registers[INTERRUPT];
+		registers[INTERRUPT] = 0;
+		return ret;
 	default:
 		break;
 	}
