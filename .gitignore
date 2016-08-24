@@ -11,4 +11,6 @@ Debug/
 Releases/
 targetConfigs
 .DS_Store
+.metadata
+RemoteSystemsTempFiles/
 >>>>>>> refs/remotes/origin/master

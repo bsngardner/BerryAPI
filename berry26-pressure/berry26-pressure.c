@@ -35,6 +35,13 @@
 
 #define DEV_TYPE 26
 
+const int led0_port = 0;
+const int led0_pin = BIT1;
+
+#define VCC_PIN BIT5
+#define PRESSURE_PIN BIT4
+#define GND_PINS (BIT3 | BIT2)
+
 #define R_READ0 2
 #define R_READ1 3
 #define R_READB 4
@@ -43,7 +50,11 @@
 uint8_t device_init()
 {
 	// todo: initialize pins
-	adc_init();
+//	P1DIR |= VCC_PIN | GND_PINS; // vcc at top of voltage divider
+//	P1OUT |= VCC_PIN;
+//	P1OUT &= ~GND_PINS;
+
+//	adc_init();
 
 	return DEV_TYPE;
 }
