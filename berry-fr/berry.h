@@ -22,6 +22,10 @@ typedef enum
 #define STATUS 1
 #define TYPE 0
 
+// p1.5 is vine interrupt line - low asserted
+#define ASSERT_INTR 	(P2DIR |= BINT) // make it an output
+#define RELEASE_INTR	(P2DIR &= ~BINT) // high impedance input
+
 //Watchdog defines
 #define WDT_HZ 200
 #define WDT_CTL WDT_ADLY_1_9
@@ -34,6 +38,13 @@ typedef enum
 //Events
 #define TICK_EVENT 0x01
 #define FLASH_UPDATE_EVENT 0x02
+
+//System registers
+#define SLAVE_ADDR -1
+#define PROJ_KEY0 -2
+#define PROJ_KEY1 -3
+#define INT_ENABLE -4
+#define INTERRUPT -5
 
 //available functions
 void main();
