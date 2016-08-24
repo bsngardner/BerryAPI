@@ -188,20 +188,21 @@ void adc_init()
 
 	timera_init();
 
+	ADC10CTL0 |= ADC10ENC; //Enable ADC
+
 	while (!(ADC10IFG & ADC10IFG0))
 		;
 	ADC10IFG &= ~ADC10IFG0;
 	uint16_t adc_read = ADC10MEM0;
 	adc_prev = adc_read;
-	for (int i = 0;;)
+	int i;
+	for (i = 0; i < 16; i++)
 	{
 		value_window[i] = adc_read;
 		sum += adc_read;
 	}
 
 	ADC10IE |= ADC10IE0;
-
-	ADC10CTL0 |= ADC10ENC; //Enable ADC
 
 }
 
@@ -262,6 +263,7 @@ __interrupt void dma_isr(void)
 __interrupt void adc_isr(void)
 {
 	uint16_t adc_read;
+	int16_t diff;
 	switch (__even_in_range(ADC10IV, 0x0C))
 	{
 	case 0:
@@ -279,11 +281,12 @@ __interrupt void adc_isr(void)
 
 		if (!tick_speed && registers[INT_ENABLE])
 		{
-			adc_prev -= (int16_t) adc_read;
-			adc_prev = (adc_prev < 0) ? -(unsigned) adc_prev : adc_prev;
-			if (adc_prev > 8)
+			diff = adc_prev - (int16_t) adc_read;
+			diff = (diff < 0) ? -(unsigned) diff : diff;
+			if (diff > 8)
 			{
 				tick_speed = 100;
+				tick_count = 100;
 				registers[INTERRUPT] = 1;
 				P2DIR |= BINT;
 				adc_prev = adc_read;

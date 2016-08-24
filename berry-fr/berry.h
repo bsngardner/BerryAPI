@@ -63,5 +63,6 @@ uint8_t get_register();
 extern volatile uint8_t* const registers;
 extern volatile int16_t current_register;
 extern volatile uint16_t tick_speed;
+extern volatile uint16_t tick_count;
 
 #endif /* BERRY_H_ */
