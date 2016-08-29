@@ -4,7 +4,7 @@
  * Authors: Broderick, Marshall
  */
 #include <msp430.h>
-#include "berry26-pressure.h"
+#include "berry26-res.h"
 
 //SMCLK source, divide by 8,
 #define TA_CTL (TASSEL__SMCLK | ID_3 | MC_1 | TACLR)

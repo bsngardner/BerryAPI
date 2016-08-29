@@ -1,5 +1,5 @@
 /* ============================================================================ */
-/* Copyright (c) 2014, Texas Instruments Incorporated                           */
+/* Copyright (c) 2016, Texas Instruments Incorporated                           */
 /*  All rights reserved.                                                        */
 /*                                                                              */
 /*  Redistribution and use in source and binary forms, with or without          */
@@ -44,7 +44,7 @@
 /* -heap   0x0100                                   HEAP AREA SIZE            */
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
-/* Version: 1.159                                                             */
+/* Version: 1.192                                                             */
 /*----------------------------------------------------------------------------*/
 
 /****************************************************************************/
@@ -140,6 +140,7 @@ SECTIONS
        {
           .cinit      : {}                   /* Initialization tables             */
           .pinit      : {}                   /* C++ constructor tables            */
+          .binit      : {}                   /* Boot-time Initialization tables   */
           .init_array : {}                   /* C++ constructor tables            */
           .mspabi.exidx : {}                 /* C++ constructor tables            */
           .mspabi.extab : {}                 /* C++ constructor tables            */
@@ -152,9 +153,24 @@ SECTIONS
        } ALIGN(0x0200), RUN_START(fram_rx_start)
     } > FRAM
 
+#ifdef __TI_COMPILER_VERSION__
+  #if __TI_COMPILER_VERSION__ >= 15009000
+    #ifndef __LARGE_DATA_MODEL__
+    .TI.ramfunc : {} load=FRAM, run=RAM, table(BINIT)
+    #else
+    .TI.ramfunc : {} load=FRAM | FRAM2, run=RAM, table(BINIT)
+    #endif
+  #endif
+#endif
+
     .jtagsignature : {} > JTAGSIGNATURE   /* JTAG Signature                    */
     .bslsignature  : {} > BSLSIGNATURE    /* BSL Signature                     */
-    .jtagpassword                         /* JTAG Password                     */
+
+    GROUP(SIGNATURE_SHAREDMEMORY)
+    {
+        .ipesignature  : {}               /* IPE Signature                     */
+        .jtagpassword  : {}               /* JTAG Password                     */
+    } > IPESIGNATURE
 
     .bss        : {} > RAM                /* Global & static vars              */
     .data       : {} > RAM                /* Global & static vars              */
@@ -220,7 +236,7 @@ SECTIONS
     COMP_D       : { * ( .int52 ) } > INT52 type = VECT_INIT
     UNMI         : { * ( .int53 ) } > INT53 type = VECT_INIT
     SYSNMI       : { * ( .int54 ) } > INT54 type = VECT_INIT
-    .reset       : {}               > RESET  /* MSP430 Reset vector         */ 
+    .reset       : {}               > RESET  /* MSP430 Reset vector         */
 }
 
 /****************************************************************************/
@@ -229,13 +245,13 @@ SECTIONS
 
 #ifdef _MPU_ENABLE
    #ifdef _MPU_MANUAL
-      mpusb1 = (_MPU_SEGB1 + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1;
-      mpusb2 = (_MPU_SEGB2 + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1;
+      mpusb1 = (_MPU_SEGB1 + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1 + 1; // Increment by 1 for Memory Size of x.5
+      mpusb2 = (_MPU_SEGB2 + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1 + 1; // Increment by 1 for Memory Size of x.5
       __mpuseg = (mpusb2 << 8) | mpusb1;
       __mpusam = (_MPU_SAM0 << 12) + (_MPU_SAM3 << 8) + (_MPU_SAM2 << 4) + _MPU_SAM1;
    #else
-      mpusb1 = (fram_ro_start + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1;
-      mpusb2 = (fram_rx_start + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1;
+      mpusb1 = (fram_ro_start + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1 + 1; // Increment by 1 for Memory Size of x.5
+      mpusb2 = (fram_rx_start + 0x4000 - 0xFFFF - 1) * 32 / 0x4000 - 1 + 1; // Increment by 1 for Memory Size of x.5
       __mpuseg = (mpusb2 << 8) | mpusb1;
       __mpusam = 0x7513;
    #endif

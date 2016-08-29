@@ -39,7 +39,7 @@
  */
 
 #include <msp430.h>
-#include "berry26-pressure.h"
+#include "berry26-res.h"
 #include "berry.h"
 
 #define DEV_TYPE 26
