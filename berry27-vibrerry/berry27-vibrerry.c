@@ -59,10 +59,10 @@ uint8_t device_init()
 	P1SEL0 |= MOTOR_PIN;
 
 	timer_init();
-	SET_OFF;
+	SET_ON;
 
 	registers[2] = 0;	//default config to on/off
-	registers[3] = 0;	//start off
+	registers[3] = 1;	//start off
 	return DEV_TYPE;
 }
 
