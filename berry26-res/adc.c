@@ -1,78 +1,41 @@
 /*
  * adc.c
  *
- *  Created on: Jun 14, 2016
- *      Author: Broderick
+ * Author: Broderick
  */
-
 #include <msp430.h>
-#include <stdint.h>
-#include "adc.h"
-
-//	/*Vcc and GND*/				SREF_0		*	|\
-//	/*8 adc clock hold time*/	ADC10SHT_1	*	|\
-//	/*Output reference?*/		REFOUT			|\
-//	/*buffer ref during */		REFBURST	*	|\
-//	/*multiple samples*/		MSC				|\
-//	/*enable 2.5V ref*/			REF2_5V			|\
-//	/*Turn on ref gen*/			REFON			|\
-//	/*Turn ADC on*/				ADC10ON		*	|\
-//	/*ADC interrupt enable*/	ADC10IE		*	|\
-//	/*Interrupt flag*/			ADC10IFG		|\
-//	/*Enable*/					ENC			*	|\
-//	/*Start conversion*/		ADC10SC			|
-
-#define LOG_SAMPLE_SIZE 3
-#define SAMPLE_SIZE (1<<LOG_SAMPLE_SIZE)
-volatile uint16_t adc_block[SAMPLE_SIZE];
-
-//#define BUF_SIZE 16
-#ifdef BUF_SIZE
-volatile uint16_t adc_buffer[BUF_SIZE] =
-{	0};
-volatile uint16_t adc_index = 0;
-#endif
+#include "berry26-pressure.h"
 
 //SMCLK source, divide by 8,
-#define TB_CTL (TBSSEL__SMCLK | TBIDEX__8 | MC_1 | TBCLR)
+#define TA_CTL (TASSEL__SMCLK | ID_3 | MC_1 | TACLR)
 
 //Reset/Set
-#define TB_CCTL1 (OUTMOD_7)
+#define TA_CCTL1 (OUTMOD_7)
 
-#define SAMPLE_PERIOD 150
+#define SAMPLE_PERIOD 4800//2400
 #define ASSERT_TIME 1
 
-//init the timer B module
-static void timerb_init()
+//init the timer A module
+void timera_init()
 {
-	TB0CCR0 = 0;
-	TB0CTL = TB_CTL;
-	TB0CCTL0 = 0;
-	TB0CCTL1 = TB_CCTL1;
-	TB0CCR1 = ASSERT_TIME;
-	TB0CCR0 = SAMPLE_PERIOD;
+	TA0CCR0 = 0;
+	TA0CTL = TA_CTL;
+	TA0CCTL0 = 0;
+	TA0CCTL1 = TA_CCTL1;
+	TA0CCR1 = ASSERT_TIME;
+	TA0CCR0 = SAMPLE_PERIOD;
 }
 
 volatile uint16_t dest[16] =
 { 0 };
 volatile uint8_t block_count = 12;
 
-static void dma_init()
-{
-	DMACTL0 |= DMA0TSEL__ADC10IFG;
-	DMA0SZ = 4;
-	__data16_write_addr((unsigned int) &DMA0SA, (unsigned long) &ADC10MEM0);
-	__data16_write_addr((unsigned int) &DMA0DA, (unsigned long) dest);
-	DMA0CTL =
-			(DMADT_4 | DMADSTINCR_3 | DMASRCINCR_0 | DMAEN | DMAIE | DMALEVEL);
-}
-
 //Vcc and Vss, 8 adc clks sample time, 50ksps reference buffer,
 //	ref buf on only during sample, multiple samples, adc on,
 //	enable interrupt
 #define ADC_CTL0 (ADC10SHT_0 | ADC10ON)
 
-//Choose input channel, TimerB.OUT1 as trigger, divide clock by 6,
+//Choose input channel, TimerA.OUT1 as trigger, divide clock by 6,
 //	choose MCLK as input (could change to SMCLK or ADC10OSC), repeat single channel
 #define ADC_CTL1 (ADC10SHS_1 | ADC10SHP | ADC10DIV_0 | ADC10SSEL_2 | ADC10CONSEQ_2)
 
@@ -81,91 +44,117 @@ static void dma_init()
 //Non continuous mode, one block mode
 #define ADC_DTC0 (0)
 
+volatile uint16_t value_window[16] =
+{ 0 };
+volatile uint16_t sum = 0;
+volatile uint16_t index = 0;
+volatile uint8_t prev_level = 0;
+
+static inline uint8_t get_level(uint8_t adc_8bit);
+#define adc_10_to_8(adc10) ((adc10 + BIT1) >> 2)
+
 //init the 10 bit adc
 void adc_init()
 {
 	ADC10CTL0 &= ~ADC10ENC; //Disable ADC
 
-	//dma_init();
-
 	ADC10CTL0 = ADC_CTL0; //configure
 	ADC10CTL1 = ADC_CTL1; //configure
 	ADC10CTL2 = ADC_CTL2; //configure
-	ADC10MCTL0 = (ADC10SREF_0 | ADC10INCH_3);
-	ADC10IE |= ADC10IE0;
+	ADC10MCTL0 = (ADC10SREF_0 | ADC10INCH_4);
 
-	timerb_init();
+	timera_init();
 
 	ADC10CTL0 |= ADC10ENC; //Enable ADC
 
+	while (!(ADC10IFG & ADC10IFG0))
+		;
+	ADC10IFG &= ~ADC10IFG0;
+	uint16_t adc_read = ADC10MEM0;
+
+	prev_level = get_level(adc_10_to_8(adc_read));
+	int i;
+	for (i = 0; i < 16; i++)
+	{
+		value_window[i] = adc_read;
+		sum += adc_read;
+	}
+
+	ADC10IE |= ADC10IE0;
 }
 
-enum
+static inline uint8_t get_level(uint8_t adc_8bit)
 {
-	NONE = 0x00,
-	DMA0 = 0x02,
-	DMA1 = 0x04,
-	DMA2 = 0x06,
-	DMA3 = 0x08,
-	DMA4 = 0x0A,
-	DMA5 = 0x0C,
-	DMA6 = 0x0E,
-	DMA7 = 0x20,
-};
-
-#pragma vector = DMA_VECTOR
-__interrupt void dma_isr(void)
-{
-	uint16_t accum;
-	switch (__even_in_range(DMAIV, 0x10))
-	{
-	case DMA0:
-		DMA0CTL &= ~DMAEN;
-		if ((block_count += 4) > 12)
-			block_count = 0;
-		__data16_write_addr((unsigned int) &DMA0DA,
-				(unsigned long) dest + block_count);
-		accum = dest[0];
-		accum += dest[1];
-		accum += dest[2];
-		accum += dest[3];
-		accum += dest[4];
-		accum += dest[5];
-		accum += dest[6];
-		accum += dest[7];
-		accum += dest[8];
-		accum += dest[9];
-		accum += dest[10];
-		accum += dest[11];
-		accum += dest[12];
-		accum += dest[13];
-		accum += dest[14];
-		accum += dest[15];
-		accum += BIT3;
-		accum >>= 4;
-		registers[2] = (accum + BIT1) >> 2;
-		registers[3] = accum & 0xff;
-		registers[4] = accum >> 8;
-		DMA0CTL |= DMAEN;
-		break;
-	default:
-		break;
-	}
+	if (adc_8bit > LEVEL1)
+		return 0;
+	else if ((adc_8bit <= LEVEL1) && (adc_8bit > LEVEL2))
+		return 1;
+	else if ((adc_8bit <= LEVEL2) && (adc_8bit > LEVEL3))
+		return 2;
+	else if ((adc_8bit <= LEVEL3) && (adc_8bit > LEVEL4))
+		return 3;
+	else
+		return 4;
 }
 
 #pragma vector = ADC10_VECTOR
 __interrupt void adc_isr(void)
 {
 	uint16_t adc_read;
+	uint8_t adc_8bit;
+	uint8_t int_en;
+	uint8_t level;
 	switch (__even_in_range(ADC10IV, 0x0C))
 	{
 	case 0:
 		break;
 	case 0x0C:
+		//subtract old value from sum, read new into array and add to sum
+		//  divide sum by 16, rounding, to find average.
 		adc_read = ADC10MEM0;
-		registers[2] = (adc_read + BIT1) >> 2;
-		registers[3] = adc_read & 0xff;
-		registers[4] = adc_read >> 8;
+		sum -= value_window[index];
+		value_window[index] = adc_read;
+		sum += adc_read;
+		if ((++index) > 15)
+			index = 0;
+		adc_read = (sum + BIT3) >> 4;
+		adc_8bit = adc_10_to_8(adc_read);
+
+		//get level:
+		level = get_level(adc_8bit);
+
+		int_en = registers[INT_ENABLE];
+		if (int_en)
+		{
+			// Exceeded threshold:
+			if (level && (level > prev_level))
+			{
+				if (level == 1 && (prev_level < 1))
+					registers[INTERRUPT] |= (int_en & ON_PRESS_1);
+				else if (level == 2 && (prev_level < 2))
+					registers[INTERRUPT] |= (int_en & ON_PRESS_2);
+				else if (level == 3 && (prev_level < 3))
+					registers[INTERRUPT] |= (int_en & ON_PRESS_3);
+				else if (level == 4 && (prev_level < 4))
+					registers[INTERRUPT] |= (int_en & ON_PRESS_4);
+			}
+			// Released:
+			if (prev_level && !level)
+				registers[INTERRUPT] |= (int_en & ON_RELEASE);
+
+			// Level changed:
+			if (level != prev_level)
+				registers[INTERRUPT] |= (int_en & ON_CHANGE);
+
+			// Assert interrupt if any of these were true.
+			if (registers[INTERRUPT])
+				ASSERT_INTR;
+		}
+		prev_level = level;
+		registers[R_READ8] = adc_8bit;
+		registers[R_LEVEL] = level;
+		registers[R_READ10_LO] = adc_read & 0xff;
+		registers[R_READ10_HI] = adc_read >> 8;
 		break;
 	default:
 		break;
