@@ -1,7 +1,7 @@
 /*
  * adc.c
  *
- * Author: Broderick
+ * Authors: Broderick, Marshall
  */
 #include <msp430.h>
 #include "berry26-pressure.h"

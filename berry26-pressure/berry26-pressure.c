@@ -33,14 +33,13 @@
  * 	Resources used:
  * 		Timer A
  * 		ADC10
- * 	Code Size:
- * 	RAM usage:
+ * 	Code Size: 3548
+ * 	RAM usage: 290
  *
  */
 
-#include "berry26-pressure.h"
-
 #include <msp430.h>
+#include "berry26-pressure.h"
 #include "berry.h"
 
 #define DEV_TYPE 26

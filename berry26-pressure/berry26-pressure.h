@@ -1,9 +1,12 @@
 /*
- * adc.h
+ * berry26-pressure.h
  *
  *  Created on: Jun 14, 2016
  *      Author: Marshall
  */
+
+#ifndef BERRY26_PRESSURE_H_
+#define BERRY26_PRESSURE_H_
 
 #include <stdint.h>
 #include "berry.h"
@@ -29,5 +32,6 @@
 #define R_READ10_LO 4
 #define R_READ10_HI 5
 
-
 void adc_init();
+
+#endif /* BERRY26_PRESSURE_H_ */
