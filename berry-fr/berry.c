@@ -179,13 +179,34 @@ void gpio_port_init()
 void seed_rand()
 {
 	int16_t seed;
-	int16_t random[16];
-	int i = 16;
-	while (i-- > 0)
+
+	ADC10CTL0 &= ADC10ENC;
+	ADC10CTL0 = ADC10SHT_0 | ADC10MSC | ADC10ON;
+	ADC10CTL1 = ADC10SHP | ADC10DIV_0 | ADC10SSEL_2 | ADC10CONSEQ_2;
+	ADC10CTL2 = ADC10PDIV_2 | ADC10RES;
+	ADC10MCTL0 = ADC10SREF_0 | ADC10INCH_10;
+
+	ADC10IE = 0;
+
+	ADC10CTL0 |= ADC10ENC | ADC10SC;
+
+	uint16_t count = 16;
+	while (count --> 0)
 	{
-		seed ^= random[i];
+		while (!(ADC10IFG & ADC10IFG0))
+			;
+		int read = ADC10MEM0;
+		ADC10IFG &= ~ADC10IFG0;
+		seed = (seed << 1) | (read & 0x01);
 	}
 	srand(seed);
+
+	ADC10CTL0 &= ~ADC10ENC;
+	ADC10CTL0 = 0;
+	ADC10CTL1 = 0;
+	ADC10CTL2 = ADC10RES;
+	ADC10MCTL0 = 0;
+
 }
 
 //------------------------------------------------------------------------------

@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <?ccsproject version="1.0"?>
 <projectOptions>
-	<deviceVariant value="MSP430FR5738"/>
+	<deviceVariant value="MSP430G2232"/>
 	<deviceFamily value="MSP430"/>
-	<deviceEndianness value="little"/>
-	<codegenToolVersion value="15.12.3.LTS"/>
+	<codegenToolVersion value="4.4.6"/>
 	<isElfFormat value="true"/>
 	<connection value="common/targetdb/connections/TIMSP430-USB.xml"/>
 	<createSlaveProjects value=""/>
-	<templateProperties value="id=com.ti.common.project.core.emptyProjectTemplate,"/>
-	<filesToOpen value=""/>
+	<templateProperties value="id=com.ti.common.project.core.emptyProjectWithMainTemplate_msp430,"/>
 	<isTargetManual value="false"/>
 </projectOptions>

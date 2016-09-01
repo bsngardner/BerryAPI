@@ -65,6 +65,7 @@ uint8_t arbitration()
 	}
 
 	P1DIR |= (P1IN & SDA_PIN);
+	__delay_cycles(100);
 	reset_sda();
 	return (P1DIR & SDA_PIN) ? 1 : 0;
 }
@@ -102,10 +103,10 @@ volatile enum
 #pragma vector = USCI_B0_VECTOR
 __interrupt void usci_b0_isr(void)
 {
-	static volatile uint8_t cmd = 0;
-	static volatile uint8_t addr_change = 0;
-	static volatile uint8_t byte_count = 0;
-	volatile uint16_t rxData;
+	static volatile uint16_t cmd = 0;
+	static volatile uint16_t addr_change = 0;
+	static volatile uint16_t byte_count = 0;
+	static volatile uint16_t rxData;
 
 	switch (__even_in_range(UCB0IV, 0x1E))
 	{
