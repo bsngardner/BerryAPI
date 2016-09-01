@@ -65,6 +65,8 @@ const uint16_t notes[12] =
 		32396  //B3
 		};
 
+volatile uint16_t level = 4;
+
 void timer_init();
 
 uint8_t device_init()
@@ -93,10 +95,18 @@ void set_register(uint8_t value)
 		}
 		else
 		{
-			uint16_t period = notes[value >> 4] >> (value & 0x0f);
+			uint16_t note = notes[value >> 4];
+			uint16_t octave = value & 0xff;
+			if (octave > 1) //Round result of octave shift
+				note += (1 << (octave - 1));
+			uint16_t period = (note) >> (octave);
 			TA0CCR0 = TA1CCR0 = period;
 			TA0CCR1 = TA1CCR1 = period >> 1;
 		}
+		TA0CTL |= TACLR;
+		TA1CTL |= TACLR;
+		P1OUT &= ~(NCH | PCH);
+		level = 4;
 		break;
 	case 3:
 
@@ -155,8 +165,6 @@ void timer_init()
 
 }
 
-volatile uint16_t level = 4;
-
 inline void new_level()
 {
 	uint8_t delta;
@@ -172,7 +180,10 @@ inline void new_level()
 		delta = (P1OUT & LOW) ^ HIGH;
 		break;
 	default:
-		__no_operation();
+		level = 4;
+		TA0CTL |= TACLR;
+		TA1CTL |= TACLR;
+		P1OUT &= ~(NCH | PCH);
 		break;
 	}
 	P1OUT ^= delta;
