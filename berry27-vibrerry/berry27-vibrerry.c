@@ -1,27 +1,7 @@
 /*
- * Firmware for Potentiometer device, berry09-pot revision E
+ * Firmware for vibrator berry, berry27-vibrerry
  * 		Broderick Gardner
  * 		6/15/2016
- *
- * 	Potentiometer is sampled 16 times every 10 ms, the values are averaged
- * 	and the result is stored in registers 2 and 3 in the register table
- *
- *  Registers:
- *  [0] : 9 (device type)
- *  [1] : (status)
- *  [2] : adc result lower byte
- *  [3] : adc result upper byte
- *  [4] : adc result scaled to 1 byte
- *
- *  Resources used:
- *  	Timer A
- *  	ADC10
- *  Code Size:
- *  	2,500/4064 bytes
- *  RAM usage:
- *  	193/256 bytes
- *
- * main.c
  */
 
 #include <msp430.h> 
