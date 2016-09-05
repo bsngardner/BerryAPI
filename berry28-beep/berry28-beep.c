@@ -72,7 +72,7 @@ void set_register(uint8_t value)
 		else
 		{
 			uint16_t note = notes[value >> 4];
-			uint16_t octave = value & 0xff;
+			uint16_t octave = value & 0x0f;
 			if (octave > 1) //Round result of octave shift
 				note += (1 << (octave - 1));
 			uint16_t period = (note) >> (octave);

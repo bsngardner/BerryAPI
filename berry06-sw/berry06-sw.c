@@ -72,14 +72,14 @@ void tick()
 		if (registers[-4] & SWITCH_PRESSED)
 		{
 			registers[-5] |= SWITCH_PRESSED;
-			P1DIR |= BIT5;
+			ASSERT_INTR;
 		}
 		break;
 	case RELEASED:
 		if (registers[-4] & SWITCH_RELEASED)
 		{
 			registers[-5] |= SWITCH_RELEASED;
-			P1DIR |= BIT5;
+			ASSERT_INTR;
 		}
 		break;
 	default:

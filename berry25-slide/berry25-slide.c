@@ -1,10 +1,10 @@
 /*
- * Firmware for Potentiometer device, berry09-pot revision E
+ * Firmware for Slider
  * 		Broderick Gardner
  * 		6/15/2016
  *
- * 	Potentiometer is sampled 16 times every 10 ms, the values are averaged
- * 	and the result is stored in registers 2 and 3 in the register table
+ * 	Potentiometer is sampled 16 times every 10 ms, the values are averaged,
+ * 	and the result is stored in registers 2, 3, and 4 in the register table
  *
  *  Registers:
  *  [0] : 27 (device type)
@@ -12,6 +12,8 @@
  *  [2] : adc result scaled to 1 byte
  *  [3] : adc result lower byte
  *  [4] : adc result upper byte
+ *  [5] : interrupt threshold (default = DEFAULT_THRESHOLD)
+ *  [6] : interrupt delay (default = DEFAULT_DELAY)
  *
  *
  *  Resources used:
@@ -31,19 +33,19 @@
 #include "pins.h"
 
 #define DEV_TYPE 25
-//Registers
-//	2 - Config (0: on/off, 1: pwm)
-//	3 - on/off
-//	4 - PWM
 
 const int led0_port = 1;
 const int led0_pin = BIT0;
 
-#define R_READ0 2
-#define R_READ1 3
-#define R_READB 4
+#define R_READ0 			2
+#define R_READ1 			3
+#define R_READB 			4
+#define R_INTR_THRESHOLD 	5
+#define R_INTR_DELAY 		6
 
-void timer_init();
+#define DEFAULT_THRESHOLD 	8
+#define DEFAULT_DELAY 		10
+
 void adc_init();
 
 uint8_t device_init()
@@ -53,6 +55,8 @@ uint8_t device_init()
 	P1SEL0 |= BIT3;
 	P1SEL1 |= BIT3;
 	adc_init();
+	registers[R_INTR_THRESHOLD] = DEFAULT_THRESHOLD;
+	registers[R_INTR_DELAY] = DEFAULT_DELAY;
 
 	return DEV_TYPE;
 }
@@ -71,6 +75,15 @@ void set_register(uint8_t value)
 	case 3:
 		break;
 	case 4:
+		break;
+	// Interrupt threshold and delay must be nonzero
+	case R_INTR_THRESHOLD:
+		registers[R_INTR_THRESHOLD] = value ? value : DEFAULT_THRESHOLD;
+		break;
+	case R_INTR_DELAY:
+		registers[R_INTR_DELAY] = value ? value : DEFAULT_DELAY;
+		break;
+	default:
 		break;
 	}
 	return;
@@ -91,6 +104,10 @@ uint8_t get_register()
 		return registers[R_READ1];
 	case R_READB:
 		return registers[R_READB];
+	case R_INTR_THRESHOLD:
+		return registers[R_INTR_THRESHOLD];
+	case R_INTR_DELAY:
+		return registers[R_INTR_DELAY];
 	default:
 		break;
 	}
@@ -283,10 +300,10 @@ __interrupt void adc_isr(void)
 		{
 			diff = adc_prev - (int16_t) adc_read;
 			diff = (diff < 0) ? -(unsigned) diff : diff;
-			if (diff > 8)
+			if (diff > registers[R_INTR_THRESHOLD])
 			{
-				tick_speed = 100;
-				tick_count = 100;
+				tick_speed = registers[R_INTR_DELAY];
+				tick_count = registers[R_INTR_DELAY];
 				registers[INTERRUPT] = 1;
 				P2DIR |= BINT;
 				adc_prev = adc_read;
