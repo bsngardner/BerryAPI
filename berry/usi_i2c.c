@@ -42,8 +42,8 @@ typedef enum
 #define send_nack {SDA_IN; USISRL = 0xFF; USICNT |= 0x01;}// Bit counter = 1, send NAck bit
 
 //Static variables
-volatile i2c_state_t i2cState = I2C_IDLE;  // State variable
-static uint8_t global_addr = 0;
+static volatile i2c_state_t i2cState = I2C_IDLE;  // State variable
+static volatile uint8_t global_addr = 0;
 
 //Local copies of persistent variables
 volatile uint16_t proj_key = 0;
