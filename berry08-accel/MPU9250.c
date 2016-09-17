@@ -115,23 +115,17 @@ int MPU9250_sleep()
 
 int MPU9250_get_raw() {
 	// Make a union to word align the data
-	union {
-		char bytes[14];
-		int words[7];
-	} raw_data;
-	unsigned i;
+	char bytes[13];
 
 	// Read gyroscope
-	raw_data.bytes[7] = 0x80 + 0x43;
-	spi_transfer(raw_data.bytes+7, 7);
+	bytes[6] = 0x80 + 0x43;
+	spi_transfer(bytes+6, 7);
 
 	// Read accelerometer
-	raw_data.bytes[1] = 0x80 + 0x3B;
-	spi_transfer(raw_data.bytes+1, 7);
+	bytes[0] = 0x80 + 0x3B;
+	spi_transfer(bytes, 7);
 
-	// Fix endianness
-	for (i=7; i>0; --i)
-		raw_data.words[i]=(int)__swap_bytes((unsigned short)raw_data.words[i]);
+	// Be sure to reverse order when placing in registers
 
 	return 0;
 }
@@ -153,4 +147,5 @@ int MPU9250_tick() {
 	} else {
 		MPU9250_get_raw();
 	}
+	return 0;
 }
