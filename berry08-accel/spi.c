@@ -59,4 +59,5 @@ __interrupt void USCI_A0_ISR() {
 			UCA0IE &= ~UCTXIE;			// Disable TX to end transfer
 		break;
 	}
+	__bic_SR_register_on_exit(LPM0_bits);
 }

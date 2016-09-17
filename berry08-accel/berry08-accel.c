@@ -7,6 +7,8 @@
 #include <msp430.h> 
 
 #include "berry.h"
+#include "spi.h"
+#include "MPU9250.h"
 
 #define DEV_TYPE 0x08
 
@@ -23,13 +25,14 @@ void timer_init();
 
 uint8_t device_init()
 {
+	spi_init();
 
 	return DEV_TYPE;
 }
 
 void tick()
 {
-
+	MPU9250_tick();
 }
 
 void set_register(uint8_t value)
