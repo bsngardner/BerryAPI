@@ -42,10 +42,9 @@ int spi_transfer(char* data, unsigned count) {
 
 	do
 		LPM0;
-	while (UCA0STATW & UCBUSY);
+	while (spi_count > 0);
 
-	UCA0IE = 0;							// Disable interrupts (TX already is)
-	PAOUT |= SCS;
+	PAOUT |= SCS;						// De-select
 
 	return 0;
 }
@@ -58,7 +57,7 @@ __interrupt void USCI_A0_ISR() {
 	case 2:								// RX interrupt
 		*spi_data++ = UCA0RXBUF; 		// Copy data into buffer
 		if (!--spi_count)
-			UCA0IE &= ~UCTXIE;			// Disable TX to end transfer
+			UCA0IE = 0;					// Disable interrupts to end transfer
 		break;
 	case 4:								// TX interrupt
 		UCA0TXBUF = *(spi_data);	// Send next byte
