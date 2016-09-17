@@ -137,7 +137,7 @@ int MPU9250_get_raw() {
 }
 
 int MPU9250_tick() {
-	static unsigned timer = 250;		// ~5 ms?
+	static unsigned timer = 500;		// ~5 ms?
 
 	if (timer) {
 		switch (timer--) {

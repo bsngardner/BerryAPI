@@ -7,8 +7,9 @@
 
 #include <msp430.h>
 
-#define UCMPUSPI	(UCCKPL|UCMSB|UCMST|UCMODE_2|UCSYNC|UCSSEL__SMCLK|UCSTEM)
-// CPHA=0, CPOL=1, MSB first, master, 4-wire STE active low, SYNC, SMCLK, master
+#define SCS 0x0010
+#define UCMPUSPI	(UCCKPL|UCMSB|UCMST|UCMODE_0|UCSYNC|UCSSEL__SMCLK|UCSTEM)
+// CPHA=0, CPOL=1, MSB first, master, 3-wire SPI, SYNC, SMCLK, master
 
 static volatile char* spi_data;
 static volatile unsigned spi_count;
@@ -20,7 +21,11 @@ int spi_init() {
 	UCB0BRW = 23;						// Divide clock by 24
 
 	PASEL0 &= ~0x0330;					// Set pins to SPI mode
-	PASEL1 |= 0x0330;					// Word access for great justice
+	PASEL1 |= 0x0320;					// Word access for great justice
+
+	PASEL1 &= ~SCS;						// Set up CS pin
+	PAOUT |= SCS;
+	PADIR |= SCS;
 
 	UCA0CTLW0 &= ~UCSWRST;				// Start eUSCI_A0
 
@@ -32,7 +37,7 @@ int spi_transfer(char* data, unsigned count) {
 	spi_count = count;					// Pass count to global
 	spi_data = data;					// Pass buffer pointer to global
 
-//	UCA0TXBUF = *data;					// Send first byte & start
+	PAOUT &= ~SCS;						// Chip select
 	UCA0IE |= UCTXIE|UCRXIE;			// Enable interrupts
 
 	do
@@ -40,6 +45,7 @@ int spi_transfer(char* data, unsigned count) {
 	while (UCA0STATW & UCBUSY);
 
 	UCA0IE = 0;							// Disable interrupts (TX already is)
+	PAOUT |= SCS;
 
 	return 0;
 }
