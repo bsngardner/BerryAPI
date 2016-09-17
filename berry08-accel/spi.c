@@ -32,7 +32,7 @@ int spi_transfer(char* data, unsigned count) {
 	spi_count = count;					// Pass count to global
 	spi_data = data;					// Pass buffer pointer to global
 
-	UCA0TXBUF = *data;					// Send first byte & start
+//	UCA0TXBUF = *data;					// Send first byte & start
 	UCA0IE |= UCTXIE|UCRXIE;			// Enable interrupts
 
 	do
@@ -51,12 +51,11 @@ __interrupt void USCI_A0_ISR() {
 		break;
 	case 2:								// RX interrupt
 		*spi_data++ = UCA0RXBUF; 		// Copy data into buffer
+		if (!--spi_count)
+			UCA0IE &= ~UCTXIE;			// Disable TX to end transfer
 		break;
 	case 4:								// TX interrupt
-		if (--spi_count > 0)			// Check if done
-			UCA0TXBUF = *(spi_data+1);	// Send next byte (first already done)
-		else							// or
-			UCA0IE &= ~UCTXIE;			// Disable TX to end transfer
+		UCA0TXBUF = *(spi_data);	// Send next byte
 		break;
 	}
 	__bic_SR_register_on_exit(LPM0_bits);

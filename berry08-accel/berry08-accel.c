@@ -25,6 +25,7 @@ void timer_init();
 
 uint8_t device_init()
 {
+	tick_speed = 1;
 	spi_init();
 
 	return DEV_TYPE;

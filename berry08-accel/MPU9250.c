@@ -39,8 +39,13 @@ int MPU9250_init()
 	char data[2];
 
 	// Wake up chip
-	// Same register: data[0] = 0x06B;
+	data[0] = 0x06B;
 	data[1] = 0x00;
+	spi_transfer(data, 2);
+
+	// Disable i2c
+	data[0] = 0x6A;
+	data[1] = 0x10;
 	spi_transfer(data, 2);
 
 	// Set gyro full-scale range
@@ -86,7 +91,12 @@ int MPU9250_init()
 	data[1] = 0x00;
 	spi_transfer(data, 2);
 
-	return 0;
+	// Check the WHOAMI register...
+	data[0] = 0x80 + 0x75; // read
+	data[1] = 0x00;
+	spi_transfer(data, 2);
+
+	return data[1] == 0x71 ? 0 : -1;
 }
 
 int MPU9250_sleep()
@@ -112,22 +122,22 @@ int MPU9250_get_raw() {
 	unsigned i;
 
 	// Read gyroscope
-	raw_data.bytes[7] = 0x43;
-	spi_transfer(raw_data.bytes+7);
+	raw_data.bytes[7] = 0x80 + 0x43;
+	spi_transfer(raw_data.bytes+7, 7);
 
 	// Read accelerometer
-	raw_data.bytes[1] = 0x3B;
-	spi_transfer(raw_data.bytes+1);
+	raw_data.bytes[1] = 0x80 + 0x3B;
+	spi_transfer(raw_data.bytes+1, 7);
 
 	// Fix endianness
-	for (i=1; i<7; ++i)
-		_SWAP_BYTES(raw_data.words[i]);
+	for (i=7; i>0; --i)
+		raw_data.words[i]=(int)__swap_bytes((unsigned short)raw_data.words[i]);
 
 	return 0;
 }
 
 int MPU9250_tick() {
-	static unsigned timer = 500;		// ~5 ms?
+	static unsigned timer = 250;		// ~5 ms?
 
 	if (timer) {
 		switch (timer--) {
