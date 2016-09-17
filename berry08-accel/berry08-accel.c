@@ -1,5 +1,5 @@
 /*
- * Firmware for beeper device, berry28-beep
+ * Firmware for accelerometer device, berry08-accel
  * 		Broderick Gardner
  * 		6/15/2016
  */
