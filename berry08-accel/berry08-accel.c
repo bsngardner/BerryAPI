@@ -24,7 +24,8 @@ uint8_t device_init() {
 }
 
 void tick() {
-	MPU9250_tick();
+	if (!MPU9250_tick())
+		calculate_motion();
 }
 
 void set_register(uint8_t value) {

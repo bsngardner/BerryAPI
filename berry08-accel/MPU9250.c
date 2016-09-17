@@ -173,5 +173,5 @@ int MPU9250_tick() {
 	} else {
 		MPU9250_get_raw();
 	}
-	return 0;
+	return timer;
 }
