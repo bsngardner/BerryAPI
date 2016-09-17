@@ -5,73 +5,74 @@
  */
 
 #include <msp430.h> 
-
+#include "berry08-accel.h"
 #include "berry.h"
 #include "spi.h"
 #include "MPU9250.h"
+#include "motion.H"
 
 #define DEV_TYPE 0x08
 
 const int led0_port = 1;
 const int led0_pin = BIT0;
 
-#define R_READ0 2
-#define R_READ1 3
-#define R_READB 4
-
-volatile uint16_t level = 4;
-
-void timer_init();
-
-uint8_t device_init()
-{
+uint8_t device_init() {
 	tick_speed = 1;
 	spi_init();
 
 	return DEV_TYPE;
 }
 
-void tick()
-{
+void tick() {
 	MPU9250_tick();
 }
 
-void set_register(uint8_t value)
-{
-	switch (current_register)
-	{
-	case 2:
-		registers[2] = value;
-
+void set_register(uint8_t value) {
+	switch (current_register) {
+	case MOVE_THRESHOLD_L:
+		registers[MOVE_THRESHOLD_L] = value;
+		move_threshold = 0;
+		current_register++;
 		break;
-	case 3:
-
+	case MOVE_THRESHOLD_H:
+		registers[MOVE_THRESHOLD_H] = value;
+		current_register++;
+		move_threshold = value << 8 | registers[MOVE_THRESHOLD_L];
 		break;
-	case 4:
-
+	case SPIKE_THRESHOLD_L:
+		registers[SPIKE_THRESHOLD_L] = value;
+		spike_threshold = 0;
+		current_register++;
+		break;
+	case SPIKE_THRESHOLD_H:
+		registers[SPIKE_THRESHOLD_H] = value;
+		current_register++;
+		spike_threshold = value << 8 | registers[SPIKE_THRESHOLD_L];
+		break;
+	case ORIENT_THRESHOLD_L:
+		registers[ORIENT_THRESHOLD_L] = value;
+		orient_threshold = 0;
+		current_register++;
+		break;
+	case ORIENT_THRESHOLD_H:
+		registers[ORIENT_THRESHOLD_H] = value;
+		orient_threshold = value << 8 | registers[ORIENT_THRESHOLD_L];
+	default:
 		break;
 	}
 
 	return;
 }
 
-uint8_t get_register()
-{
-	switch (current_register)
-	{
-	//On reading each byte of the potentiometer value,
-	//	switch current register to the other byte
-	//	This allows reading 2 bytes in quick succession
-	case R_READ0:
-		current_register = R_READ1;
-		return registers[R_READ0];
-	case R_READ1:
-		current_register = R_READ0;
-		return registers[R_READ1];
-	case R_READB:
-		return registers[R_READB];
-	default:
-		break;
+uint8_t get_register() {
+
+	uint8_t ret = 0;
+	if (current_register <= TEMP_H) {
+		ret = registers[current_register];
+		if (++current_register > TEMP_H)
+			current_register = ACCEL_X_L;
 	}
-	return 0;
+
+	return ret;
+
 }

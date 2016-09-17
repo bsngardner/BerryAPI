@@ -8,7 +8,10 @@
 
 #include <msp430.h>
 #include "MPU9250.h"
+#include "berry.h"
+#include "berry08-accel.h"
 #include "spi.h"
+#include "motion.h"
 
 void MPU9250_reset() {
 	char data[2];
@@ -60,15 +63,17 @@ int MPU9250_init()
 
 	// Set digital low-pass filter for gyro
 	data[0] = 0x1A; 					// lpf
-	data[1] = INV_FILTER_42HZ;
+	data[1] = 0x18 | INV_FILTER_5HZ;
 	spi_transfer(data, 2);
 
 	// Set sample rate to 1000 Hz
 	data[0] = 0x19; 					// rate_div
 	data[1] = 1000 / 1000 - 1;
 	spi_transfer(data, 2);
-	// by default, the SDK would now overwrite the low-pass filter to be 20 Hz,
-	// but let's skip this for now...
+
+	// Set digital low-pass filter for accel
+	data[0] = 0x1D;
+	data[1] = 0x08 | INV_FILTER_5HZ;
 
 	// Set up interrupt pin
 	data[0] = 0x37; // int pin
@@ -115,17 +120,38 @@ int MPU9250_sleep()
 
 int MPU9250_get_raw() {
 	// Make a union to word align the data
-	char bytes[13];
+	char bytes[15];
 
-	// Read gyroscope
-	bytes[6] = 0x80 + 0x43;
-	spi_transfer(bytes+6, 7);
-
-	// Read accelerometer
+	// Read data
 	bytes[0] = 0x80 + 0x3B;
-	spi_transfer(bytes, 7);
+	spi_transfer(bytes, 14);
 
-	// Be sure to reverse order when placing in registers
+	// Reverse order when placing in registers
+	// Register changes should be atomic
+	__disable_interrupt();
+	registers[ACCEL_X_H] = bytes[1];
+	registers[ACCEL_X_L] = bytes[2];
+	accel_x = bytes[1] << 8 | bytes[2];
+	registers[ACCEL_Y_H] = bytes[3];
+	registers[ACCEL_Y_L] = bytes[4];
+	accel_y = bytes[3] << 8 | bytes[4];
+	registers[ACCEL_Z_H] = bytes[5];
+	registers[ACCEL_Z_L] = bytes[6];
+	accel_z = bytes[5] << 8 | bytes[6];
+
+	registers[TEMP_H] = bytes[7];
+	registers[TEMP_L] = bytes[8];
+
+	registers[GYRO_X_H] = bytes[9];
+	registers[GYRO_X_L] = bytes[10];
+	gyro_x = bytes[9] << 8 | bytes[10];
+	registers[GYRO_Y_H] = bytes[11];
+	registers[GYRO_Y_L] = bytes[12];
+	gyro_y = bytes[11] << 8 | bytes[12];
+	registers[GYRO_Z_H] = bytes[13];
+	registers[GYRO_Z_L] = bytes[14];
+	gyro_z = bytes[13] << 8 | bytes[14];
+	__enable_interrupt();
 
 	return 0;
 }
