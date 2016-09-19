@@ -5,11 +5,15 @@
  *      Author: Kristian Sims
  */
 
-#include "motion.h";
+#include "motion.h"
 #include "berry08-accel.h"
+#include <msp430.h>
+#include "pins.h"
+#include "berry.h"
 
 #define abs(x)	((x) > 0 ? (x) : (-x))
 
+extern volatile uint8_t interrupt_cooldown;
 volatile int accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z;
 volatile unsigned move_threshold, spike_threshold, orient_threshold;
 // TODO: Should these be signed? Comparison with signed and unsigned... :(
@@ -20,14 +24,14 @@ void calculate_motion() {
 	// In each case, if the threshold is zero, it is disabled and we ignore it
 
 	/* The move event is meant to tell us if the berry is moving at all.
-	 * Ideally, movee_threshold will be set such that regular sensnor noise
+	 * Ideally, move_threshold will be set such that regular sensor noise
 	 * (such as might exist after the filter) won't cause any false positives,
 	 * but picking up or moving/touching the berry will. This is achieved by
 	 * storing the accelerometer values and taking a delta in each dimension
 	 * and comparing them to the threshold. Also, the gyroscope values could
 	 * be compared in absolute value to the threshold, since they are going to
 	 * be centered around zero when the berry is at rest.	*/
-	if (move_threshold) {
+	if ((registers[INT_ENABLE] & MOVE_INTERRUPT) && move_threshold) {
 		static int move_anchor_x, move_anchor_y, move_anchor_z;
 		if (
 				abs(move_anchor_x-accel_x) > move_threshold ||
@@ -39,6 +43,8 @@ void calculate_motion() {
 
 			// Signal interrupt
 			// TODO: signal interrupt
+			registers[INT_ENABLE] |= MOVE_INTERRUPT;
+			ASSERT_INTR;
 
 			// Reset anchors
 			move_anchor_x = accel_x;
@@ -47,6 +53,7 @@ void calculate_motion() {
 
 			// Set some kind of cooldown timer
 			// TODO: set cooldown timer
+			interrupt_cooldown = registers[INTR_COOLDOWN];
 		}
 	}
 
@@ -54,16 +61,19 @@ void calculate_motion() {
 	 * accelerometer axis exceeds spike_threshold. That's about all there is to
 	 * it. It's intended to register big hits like being dropped or punched.
 	 */
-	if (spike_threshold) {
+	if ((registers[INT_ENABLE] & SPIKE_INTERRUPT) && spike_threshold) {
 		if (
 				abs(accel_x) > spike_threshold ||
 				abs(accel_y) > spike_threshold ||
 				abs(accel_z) > spike_threshold) {
 			// Signal interrupt
 			// TODO: signal interrupt
+//			ASSERT_INTR;
 
 			// Set a cooldown timer
 			// TODO: set cooldown timer
+//			registers[INT_ENABLE] |= SPIKE_INTERRUPT;
+//			interrupt_cooldown = registers[INTR_COOLDOWN];
 		}
 	}
 

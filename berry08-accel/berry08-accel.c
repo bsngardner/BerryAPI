@@ -12,20 +12,33 @@
 #include "motion.H"
 
 #define DEV_TYPE 0x08
+#define DEFAULT_INTERRUPT_COOLDOWN 10
+#define DEFAULT_MOVE_THRESHOLD 100
+#define DEFAULT_SPIKE_THRESHOLD 500
 
 const int led0_port = 1;
 const int led0_pin = BIT0;
+
+volatile uint8_t interrupt_cooldown = 0;
 
 uint8_t device_init() {
 	tick_speed = 1;
 	spi_init();
 
+	// Initial values for thresholds
+	registers[INTR_COOLDOWN] = DEFAULT_INTERRUPT_COOLDOWN;
+	registers[MOVE_THRESHOLD_L] = DEFAULT_MOVE_THRESHOLD & 0xff;
+	registers[MOVE_THRESHOLD_H] = (DEFAULT_MOVE_THRESHOLD >> 8) & 0xff;
+	registers[SPIKE_THRESHOLD_L] = DEFAULT_SPIKE_THRESHOLD & 0xff;
+	registers[SPIKE_THRESHOLD_H] = (DEFAULT_SPIKE_THRESHOLD >> 8) & 0xff;
+
 	return DEV_TYPE;
 }
 
 void tick() {
-	if (!MPU9250_tick())
-		calculate_motion();
+	if (interrupt_cooldown && (--interrupt_cooldown == 0))
+		if (!MPU9250_tick())
+			calculate_motion();
 }
 
 void set_register(uint8_t value) {
@@ -58,6 +71,10 @@ void set_register(uint8_t value) {
 	case ORIENT_THRESHOLD_H:
 		registers[ORIENT_THRESHOLD_H] = value;
 		orient_threshold = value << 8 | registers[ORIENT_THRESHOLD_L];
+		break;
+	case INTR_COOLDOWN:
+		registers[INTR_COOLDOWN] = value;
+		break;
 	default:
 		break;
 	}

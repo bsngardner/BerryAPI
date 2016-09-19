@@ -34,9 +34,11 @@ enum reg {
 	MAG_Z_L,
 	MAG_Z_H,
 	TEMP_L,
-	TEMP_H
+	TEMP_H,
+	INTR_COOLDOWN // 28
 };
 
-
+#define MOVE_INTERRUPT	0x01
+#define SPIKE_INTERRUPT 0x02
 
 #endif /* BERRY08_ACCEL_H_ */
