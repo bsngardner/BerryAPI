@@ -7,14 +7,17 @@
 #include <msp430.h> 
 #include "berry08-accel.h"
 #include "berry.h"
+#include "pins.h"
 #include "spi.h"
 #include "MPU9250.h"
-#include "motion.H"
+#include "motion.h"
 
-#define DEV_TYPE 0x08
-#define DEFAULT_INTERRUPT_COOLDOWN 10
-#define DEFAULT_MOVE_THRESHOLD 100
-#define DEFAULT_SPIKE_THRESHOLD 500
+#define DEV_TYPE	0x08
+
+#define DEFAULT_INTERRUPT_COOLDOWN	10
+#define DEFAULT_MOVE_THRESHOLD		100
+#define DEFAULT_SPIKE_THRESHOLD		500
+#define DEFAULT_ORIENT_THRESHOLD	0
 
 const int led0_port = 1;
 const int led0_pin = BIT0;
@@ -36,9 +39,16 @@ uint8_t device_init() {
 }
 
 void tick() {
-	if (interrupt_cooldown && (--interrupt_cooldown == 0))
-		if (!MPU9250_tick())
-			calculate_motion();
+
+	// Poll accelerometer and (once init is done) analyze the measurements
+	if (!MPU9250_tick())
+		calculate_motion();
+
+	// Check cooldown and signal interrupts
+	if (interrupt_cooldown)
+		interrupt_cooldown--;
+	else if (registers[INT_ENABLE] & registers[INTERRUPT] & ALL_INTERRUPTS)
+		interrupt_cooldown = registers[INTR_COOLDOWN], ASSERT_INTR;
 }
 
 void set_register(uint8_t value) {
