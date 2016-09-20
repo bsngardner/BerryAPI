@@ -10,13 +10,11 @@
 #include <msp430.h>
 #include "berry.h"
 
-#define abs(x)	((x) > 0 ? (x) : (-x))
-#define ORIENT_DIV	2 // Look at real gyro data and figure out this value
+#define abs(x)	((x) >= 0 ? (x) : (-x))
 
 extern volatile uint8_t interrupt_cooldown;
 volatile int accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z;
-volatile unsigned move_threshold, spike_threshold, orient_threshold;
-// TODO: Should these be signed? Comparison with signed and unsigned... :(
+volatile int move_threshold, spike_threshold, orient_threshold;
 
 void calculate_motion() {
 
@@ -41,12 +39,12 @@ void calculate_motion() {
 	if (move_threshold) {
 		static int move_anchor_x, move_anchor_y, move_anchor_z;
 		if (
-				abs(move_anchor_x-accel_x) > move_threshold ||
-				abs(move_anchor_y-accel_y) > move_threshold ||
-				abs(move_anchor_z-accel_z) > move_threshold ||
-				abs(gyro_x) > move_threshold ||
-				abs(gyro_y) > move_threshold ||
-				abs(gyro_z) > move_threshold) {
+				abs(move_anchor_x-accel_x) >= move_threshold ||
+				abs(move_anchor_y-accel_y) >= move_threshold ||
+				abs(move_anchor_z-accel_z) >= move_threshold ||
+				abs(gyro_x) >= move_threshold ||
+				abs(gyro_y) >= move_threshold ||
+				abs(gyro_z) >= move_threshold) {
 
 			// Signal interrupt
 			registers[INTERRUPT] |= MOVE_INTERRUPT;
@@ -64,9 +62,9 @@ void calculate_motion() {
 	 */
 	if (spike_threshold) {
 		if (
-				abs(accel_x) > spike_threshold ||
-				abs(accel_y) > spike_threshold ||
-				abs(accel_z) > spike_threshold) {
+				abs(accel_x) >= spike_threshold ||
+				abs(accel_y) >= spike_threshold ||
+				abs(accel_z) >= spike_threshold) {
 
 			// Signal interrupt
 			registers[INTERRUPT] |= SPIKE_INTERRUPT;
@@ -81,17 +79,21 @@ void calculate_motion() {
 	if (orient_threshold) {
 		static int orient_x_accum, orient_y_accum, orient_z_accum;
 
-		orient_x_accum += gyro_x >> ORIENT_DIV;
-		orient_y_accum += gyro_y >> ORIENT_DIV;
-		orient_z_accum += gyro_z >> ORIENT_DIV;
+		orient_x_accum -= orient_x_accum >> registers[ORIENT_DIV];
+		orient_y_accum -= orient_y_accum >> registers[ORIENT_DIV];
+		orient_z_accum -= orient_z_accum >> registers[ORIENT_DIV];
+
+		orient_x_accum += gyro_x >> registers[ORIENT_DIV];
+		orient_y_accum += gyro_y >> registers[ORIENT_DIV];
+		orient_z_accum += gyro_z >> registers[ORIENT_DIV];
 
 		if (
-				abs(orient_x_accum) > orient_threshold ||
-				abs(orient_x_accum) > orient_threshold ||
-				abs(orient_x_accum) > orient_threshold) {
+				abs(orient_x_accum) >= orient_threshold ||
+				abs(orient_x_accum) >= orient_threshold ||
+				abs(orient_x_accum) >= orient_threshold) {
 
 			// Signal interrupt
-			registers[INTERRUPT] |= SPIKE_INTERRUPT;
+			registers[INTERRUPT] |= ORIENT_INTERRUPT;
 
 			// Clear the accumulators
 			orient_x_accum = 0;

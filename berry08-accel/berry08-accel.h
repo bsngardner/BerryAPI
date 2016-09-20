@@ -35,8 +35,10 @@ enum reg {
 	MAG_Z_H,
 	TEMP_L,
 	TEMP_H,
-	INTR_COOLDOWN // 28
+	INTR_COOLDOWN,
+	ORIENT_DIV // 28
 };
+#define MAX_REG	28
 
 #define MOVE_INTERRUPT		BIT0
 #define SPIKE_INTERRUPT		BIT1

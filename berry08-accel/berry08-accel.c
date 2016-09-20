@@ -15,9 +15,10 @@
 #define DEV_TYPE	0x08
 
 #define DEFAULT_INTERRUPT_COOLDOWN	10
-#define DEFAULT_MOVE_THRESHOLD		100
-#define DEFAULT_SPIKE_THRESHOLD		500
-#define DEFAULT_ORIENT_THRESHOLD	0
+#define DEFAULT_MOVE_THRESHOLD		400
+#define DEFAULT_SPIKE_THRESHOLD		10000
+#define DEFAULT_ORIENT_THRESHOLD	400
+#define DEFAULT_ORIENT_DIV			5
 
 const int led0_port = 1;
 const int led0_pin = BIT0;
@@ -29,11 +30,16 @@ uint8_t device_init() {
 	spi_init();
 
 	// Initial values for thresholds
+	move_threshold = DEFAULT_MOVE_THRESHOLD;
+	spike_threshold = DEFAULT_SPIKE_THRESHOLD;
+	orient_threshold = DEFAULT_ORIENT_THRESHOLD;
+
 	registers[INTR_COOLDOWN] = DEFAULT_INTERRUPT_COOLDOWN;
 	registers[MOVE_THRESHOLD_L] = DEFAULT_MOVE_THRESHOLD & 0xff;
 	registers[MOVE_THRESHOLD_H] = (DEFAULT_MOVE_THRESHOLD >> 8) & 0xff;
 	registers[SPIKE_THRESHOLD_L] = DEFAULT_SPIKE_THRESHOLD & 0xff;
 	registers[SPIKE_THRESHOLD_H] = (DEFAULT_SPIKE_THRESHOLD >> 8) & 0xff;
+	registers[ORIENT_DIV] = DEFAULT_ORIENT_DIV;
 
 	return DEV_TYPE;
 }
@@ -46,7 +52,7 @@ void tick() {
 
 	// Check cooldown and signal interrupts
 	if (interrupt_cooldown)
-		interrupt_cooldown--;
+		--interrupt_cooldown;
 	else if (registers[INT_ENABLE] & registers[INTERRUPT] & ALL_INTERRUPTS)
 		interrupt_cooldown = registers[INTR_COOLDOWN], ASSERT_INTR;
 }
@@ -85,6 +91,16 @@ void set_register(uint8_t value) {
 	case INTR_COOLDOWN:
 		registers[INTR_COOLDOWN] = value;
 		break;
+	case ORIENT_DIV:
+		if (value < 16) {
+			registers[ORIENT_DIV] = value;
+		} else {
+			registers[ORIENT_DIV] = 1;
+			value>>=1;
+			while (value>>1)
+				registers[ORIENT_DIV] <<= 1;
+		}
+		break;
 	default:
 		break;
 	}
@@ -95,9 +111,9 @@ void set_register(uint8_t value) {
 uint8_t get_register() {
 
 	uint8_t ret = 0;
-	if (current_register <= TEMP_H) {
+	if (current_register <= MAX_REG) {
 		ret = registers[current_register];
-		if (++current_register > TEMP_H)
+		if (++current_register > MAX_REG)
 			current_register = ACCEL_X_L;
 	}
 
