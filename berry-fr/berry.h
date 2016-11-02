@@ -9,6 +9,12 @@
 #define BERRY_H_
 #include <stdint.h>
 
+//Typedef for clock speed adjustment
+typedef enum
+{
+	_1MHZ, _8MHZ, _12MHZ, _16MHZ
+} CLOCK_SPEED;
+
 //Status LED
 #define J 0
 
