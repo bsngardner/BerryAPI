@@ -15,7 +15,6 @@
 #define SCL_PIN BSCL
 #define SDA_READ (P1IN & SDA_PIN)
 
-extern volatile uint16_t proj_key;
 extern volatile uint16_t slave_addr;
 
 void sys_set_register(uint8_t value);
@@ -72,8 +71,6 @@ uint8_t arbitration()
 
 #define NEW_ADDR 0x00
 #define RESET_ALL 0x01
-#define VERIFY_PROJECT_KEY 0x02
-#define UPDATE_PROJECT_KEY 0x03
 
 #define SEND_NACK UCB0CTLW0 |= UCTXNACK
 #define CLOCK_HELD (UCB0STATW & UCSCLLOW)
@@ -143,11 +140,6 @@ __interrupt void usci_b0_isr(void)
 				case RESET_ALL:
 					slave_addr = 0;
 					addr_change = 1;
-					proj_key = 0;
-					break;
-				case VERIFY_PROJECT_KEY:
-					break;
-				case UPDATE_PROJECT_KEY:
 					break;
 				default:
 					break;
@@ -189,50 +181,13 @@ __interrupt void usci_b0_isr(void)
 					}
 					break;
 
-					//Verify project key command response
-				case VERIFY_PROJECT_KEY:
-					switch (byte_count)
-					{
-					case 2:
-						rxData = UCB0RXBUF;
-						break;
-					case 3:
-						rxData = rxData | (UCB0RXBUF << 8);
-						if (rxData != proj_key)
-						{
-							slave_addr = 0;
-							addr_change = 1;
-							proj_key = rxData;
-						}
-						break;
-					default:
-						rxData = UCB0RXBUF;
-						break;
-					}
-					break;
-
-					//Direct update of the project key
-				case UPDATE_PROJECT_KEY:
-					switch (byte_count)
-					{
-					case 2:
-						rxData = UCB0RXBUF;
-						break;
-					case 3:
-						proj_key = rxData | (UCB0RXBUF << 8);
-						break;
-					default:
-						rxData = UCB0RXBUF;
-						break;
-					}
-					break;
-
 				default:
 					rxData = UCB0RXBUF;
 					break;
 				}
 			}
 		}
+		// Not a general call
 		else
 		{
 			if (usci_state == RX_1)

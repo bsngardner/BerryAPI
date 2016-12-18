@@ -40,11 +40,16 @@ typedef enum
 #define FLASH_UPDATE_EVENT 0x02
 
 //System registers
-#define SLAVE_ADDR -1
-#define PROJ_KEY0 -2
-#define PROJ_KEY1 -3
-#define INT_ENABLE -4
-#define INTERRUPT -5
+#define GUID0 -1
+#define GUID1 -2
+#define GUID2 -3
+#define GUID3 -4
+#define GUID4 -5
+#define GUID5 -6
+#define GUID6 -7
+#define GUID7 -8
+#define INT_ENABLE -9
+#define INTERRUPT -10
 
 //available functions
 void main();

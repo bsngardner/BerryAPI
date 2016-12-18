@@ -15,6 +15,9 @@
 
 //local macros
 #define COND_BIT(bool,byte,mask) ((byte) ^= ((-bool) ^ (byte)) & (mask))
+#define GUID_LO_ADDR 0x01A0A
+#define GUID_HI_ADDR 0x01A11
+#define GUID_LEN 8
 
 //Prototypes
 int bapi_init();
@@ -42,17 +45,17 @@ volatile int16_t current_register = 0;
 volatile uint16_t sys_event = 0;
 volatile uint16_t tick_speed = 0;
 volatile uint16_t tick_count = 1;
-
-// Copies of persistent variables in RAM
-#pragma PERSISTENT(proj_key)
-volatile uint16_t proj_key = 0;
-#pragma PERSISTENT(slave_addr)
 volatile uint16_t slave_addr = 0;
 
+#pragma DATA_SECTION(guid, ".infoA")
+volatile uint64_t guid;
+
 //Local function prototypes
+void get_guid();
 
 void main()
 {
+	get_guid();
 	bapi_init();
 	registers[TYPE] = device_init();
 	tick_count = 1;
@@ -89,13 +92,33 @@ void main()
 	}
 }
 
+void get_guid()
+{
+	uint8_t *addr = (uint8_t*) GUID_LO_ADDR;
+	guid = (
+			((uint64_t)*(addr + 0) << 56) |
+			((uint64_t)*(addr + 1) << 48) |
+			((uint64_t)*(addr + 2) << 40) |
+			((uint64_t)*(addr + 3) << 32) |
+			((uint64_t)*(addr + 4) << 24) |
+			((uint64_t)*(addr + 5) << 16) |
+			((uint64_t)*(addr + 6) << 8) |
+			((uint64_t)*(addr + 7))
+			);
+	registers[GUID0] = (uint8_t) (guid & 0xff);
+	registers[GUID1] = (uint8_t) ((guid >> 8) & 0xff);
+	registers[GUID2] = (uint8_t) ((guid >> 16) & 0xff);
+	registers[GUID3] = (uint8_t) ((guid >> 24) & 0xff);
+	registers[GUID4] = (uint8_t) ((guid >> 32) & 0xff);
+	registers[GUID5] = (uint8_t) ((guid >> 40) & 0xff);
+	registers[GUID6] = (uint8_t) ((guid >> 48) & 0xff);
+	registers[GUID7] = (uint8_t) ((guid >> 56) & 0xff);
+}
+
 void sys_set_register(uint8_t value)
 {
 	switch (current_register)
 	{
-	case TYPE:
-		//Dont change my type!!!
-		return;
 	case STATUS:
 		registers[STATUS] = value;
 		//conditionally set or clear status led according to value
@@ -104,10 +127,8 @@ void sys_set_register(uint8_t value)
 	case INT_ENABLE:
 		registers[INT_ENABLE] = value;
 		return;
-	case INTERRUPT:
-		//Read only!
-		return;
 	default:
+		//All other system registers are read-only
 		break;
 	}
 	return;
@@ -122,6 +143,30 @@ uint8_t sys_get_register()
 		return registers[TYPE];
 	case STATUS:
 		return registers[STATUS];
+	case GUID0:
+		current_register = GUID1;
+		return registers[GUID0];
+	case GUID1:
+		current_register = GUID2;
+		return registers[GUID1];
+	case GUID2:
+		current_register = GUID3;
+		return registers[GUID2];
+	case GUID3:
+		current_register = GUID4;
+		return registers[GUID3];
+	case GUID4:
+		current_register = GUID5;
+		return registers[GUID4];
+	case GUID5:
+		current_register = GUID6;
+		return registers[GUID5];
+	case GUID6:
+		current_register = GUID7;
+		return registers[GUID6];
+	case GUID7:
+		current_register = GUID0;
+		return registers[GUID7];
 	case INT_ENABLE:
 		return registers[INT_ENABLE];
 	case INTERRUPT:
