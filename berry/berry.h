@@ -27,6 +27,10 @@ typedef enum
 #define STATUS 1
 #define TYPE 0
 
+//System registers
+#define INT_ENABLE -9
+#define INTERRUPT -10
+
 // p1.5 is vine interrupt line - low asserted
 #define ASSERT_INTR 	(P1DIR |= BINT_PIN) // make it an output
 #define RELEASE_INTR	(P1DIR &= ~BINT_PIN) // high impedance input

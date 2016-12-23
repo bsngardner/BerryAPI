@@ -24,8 +24,6 @@
 #define GUID5 -6
 #define GUID6 -7
 #define GUID7 -8
-#define INT_ENABLE -9
-#define INTERRUPT -10
 
 //Prototypes
 int bapi_init();
@@ -97,7 +95,6 @@ typedef union
 
 #pragma DATA_SECTION(flash_guid, ".infoB");
 static flash_var_t flash_guid;
-static uint16_t flash_segment_addr = (uint16_t)&flash_guid;
 
 //Local function prototypes
 static void flash_write_byte(uint8_t *address, uint8_t byte);
@@ -353,6 +350,7 @@ static void flash_write_word(uint16_t* ptr, uint16_t word)
 
 static void flash_update_event()
 {
+	static uint16_t flash_segment_addr = (uint16_t)&flash_guid;
 	short sr = __get_SR_register();
 	__disable_interrupt();
 

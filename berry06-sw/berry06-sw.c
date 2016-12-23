@@ -18,10 +18,10 @@
  */
 
 #include <msp430.h>
-#include "berry.h"
-
 #include <stdint.h>
+
 #include "string.h"
+#include "berry.h"
 
 //Defines
 #define SW 2
@@ -69,16 +69,16 @@ void tick()
 	{
 	case PRESSED:
 		// Only assert interrupt bit if interrupt was enabled
-		if (registers[-4] & SWITCH_PRESSED)
+		if (registers[INT_ENABLE] & SWITCH_PRESSED)
 		{
-			registers[-5] |= SWITCH_PRESSED;
+			registers[INTERRUPT] |= SWITCH_PRESSED;
 			ASSERT_INTR;
 		}
 		break;
 	case RELEASED:
-		if (registers[-4] & SWITCH_RELEASED)
+		if (registers[INT_ENABLE] & SWITCH_RELEASED)
 		{
-			registers[-5] |= SWITCH_RELEASED;
+			registers[INTERRUPT] |= SWITCH_RELEASED;
 			ASSERT_INTR;
 		}
 		break;
