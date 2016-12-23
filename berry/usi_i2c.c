@@ -31,8 +31,6 @@ typedef enum
 #define GEN_CALL 0x00
 #define NEW_ADDR 0x00
 #define RESET_ALL 0x01
-#define VERIFY_PROJECT_KEY 0x02
-#define UPDATE_PROJECT_KEY 0x03
 
 //Macros
 #define SDA_OUT USICTL0 |= USIOE
@@ -44,10 +42,7 @@ typedef enum
 //Static variables
 static volatile i2c_state_t i2cState = I2C_IDLE;  // State variable
 static volatile uint8_t global_addr = 0;
-
-//Local copies of persistent variables
-volatile uint16_t proj_key = 0;
-volatile uint16_t slave_addr = 0;
+static volatile uint8_t slave_addr = 0;
 
 void usi_init()
 {
@@ -131,7 +126,6 @@ __interrupt void USI_TXRX(void)
 	static uint8_t byte_count = 0;
 	static uint8_t cmd;
 	static uint16_t addr;
-	static uint16_t temp_key;
 	static uint8_t read_bubble_seven_bits = 0;
 
 	timeout_cnt = USI_TIMEOUT;
@@ -271,8 +265,7 @@ __interrupt void USI_TXRX(void)
 				{
 					if (arbitration())
 					{
-						delayed_copy_to_flash(&slave_addr, addr,
-								FLASH_UPDATE_EVENT);
+						slave_addr = addr;
 						send_ack
 						;
 					}
@@ -290,81 +283,10 @@ __interrupt void USI_TXRX(void)
 			}
 			break;
 		case RESET_ALL:
-			delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
-			delayed_copy_to_flash(&proj_key, 0, FLASH_UPDATE_EVENT);
+			slave_addr = 0;
 			send_ack
 			;
 			i2cState = I2C_RESET;
-			break;
-
-		case VERIFY_PROJECT_KEY:
-			// Get the next 2 bytes (project key)
-			if (byte_count == 1)
-			{
-				send_ack
-				;
-				i2cState = I2C_RX;
-				break;
-			}
-			else if (byte_count == 2)
-			{
-				temp_key = USISRL;
-				send_ack
-				;
-				i2cState = I2C_RX;
-				break;
-			}
-			// Got the project key; check if it matches our own project key
-			else if (byte_count == 3)
-			{
-				temp_key |= USISRL << 8;
-				if (proj_key != temp_key)
-				{	// Keys don't match, clear slave addr and update key
-					delayed_copy_to_flash(&slave_addr, 0, FLASH_UPDATE_EVENT);
-					delayed_copy_to_flash(&proj_key, temp_key,
-							FLASH_UPDATE_EVENT);
-					send_nack
-					;
-				}
-				else
-				{	// Hashes match
-					send_ack
-					;
-				}
-				// reset state machine
-				i2cState = I2C_RESET;
-				break;
-			}
-			break;
-
-		case UPDATE_PROJECT_KEY:
-			// Get the next 2 bytes (project key)
-			if (byte_count == 1)
-			{
-				send_ack
-				;
-				i2cState = I2C_RX;
-				break;
-			}
-			else if (byte_count == 2)
-			{
-				temp_key = USISRL;
-				send_ack
-				;
-				i2cState = I2C_RX;
-				break;
-			}
-			else if (byte_count == 3)
-			{
-				temp_key |= USISRL << 8;
-				delayed_copy_to_flash(&proj_key, temp_key,
-						FLASH_UPDATE_EVENT);
-				send_ack
-				;
-				// reset state machine
-				i2cState = I2C_RESET;
-				break;
-			}
 			break;
 
 		default:

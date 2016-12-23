@@ -16,11 +16,16 @@
 #define COND_BIT(bool,byte,mask) (byte ^= ((-bool) ^ (byte)) & (mask))
 
 //System registers
-#define SLAVE_ADDR -1
-#define PROJ_KEY0 -2
-#define PROJ_KEY1 -3
-#define INT_ENABLE -4
-#define INTERRUPT -5
+#define GUID0 -1
+#define GUID1 -2
+#define GUID2 -3
+#define GUID3 -4
+#define GUID4 -5
+#define GUID5 -6
+#define GUID6 -7
+#define GUID7 -8
+#define INT_ENABLE -9
+#define INTERRUPT -10
 
 //Prototypes
 int bapi_init();
@@ -71,43 +76,48 @@ volatile uint16_t tick_speed = 0;
 volatile uint16_t tick_count = 1;
 
 //Persistent memory - DO NOT USE SEGMENT A - IT IS FOR CALIBRATION DATA
-#define SEGMENT_SIZE 64
 typedef union
 {
 	struct
 	{
-		uint16_t words[2];
+		uint64_t guid;
 	};
 	struct
 	{
-		uint16_t slave_addr;
-		uint16_t proj_key;
+		uint8_t guid0;
+		uint8_t guid1;
+		uint8_t guid2;
+		uint8_t guid3;
+		uint8_t guid4;
+		uint8_t guid5;
+		uint8_t guid6;
+		uint8_t guid7;
 	};
-} flash_var_t; //4 bytes
+} flash_var_t; // 8 bytes
 
-#define FLASH_MAX_INDEX SEGMENT_SIZE / sizeof(flash_var_t)
-#pragma DATA_SECTION(flash_array, ".infoB");
-flash_var_t flash_array[FLASH_MAX_INDEX];
-
-// Copies of persistent variables in RAM
-extern volatile uint16_t proj_key;
-extern volatile uint16_t slave_addr;
+#pragma DATA_SECTION(flash_guid, ".infoB");
+static flash_var_t flash_guid;
+static uint16_t flash_segment_addr = (uint16_t)&flash_guid;
 
 //Local function prototypes
-//static void flash_write_byte(uint16_t address, uint8_t byte);
-static void flash_write_word(uint16_t* ptr, uint16_t word);
+static void flash_write_byte(uint8_t *address, uint8_t byte);
+//static void flash_write_word(uint16_t *ptr, uint16_t word);
 static void flash_delete_segment(uint16_t segment);
 static void flash_update_event();
-static void project_mem_init();
 
 void main()
 {
 	bapi_init();
 	registers[TYPE] = device_init();
+	registers[GUID0] = flash_guid.guid0;
+	registers[GUID1] = flash_guid.guid1;
+	registers[GUID2] = flash_guid.guid2;
+	registers[GUID3] = flash_guid.guid3;
+	registers[GUID4] = flash_guid.guid4;
+	registers[GUID5] = flash_guid.guid5;
+	registers[GUID6] = flash_guid.guid6;
+	registers[GUID7] = flash_guid.guid7;
 	tick_count = 1;
-
-// Read persistent variables into local copies
-	project_mem_init();
 
 // Enable global interrupts after all initialization is finished.
 	__enable_interrupt();
@@ -155,6 +165,39 @@ void sys_set_register(uint8_t value)
 		//conditionally set or clear status led according to value
 		COND_BIT(value, *PxOUT[LED0_PORT], LED0_PIN);
 		return;
+	case GUID0:
+		registers[GUID0] = value;
+		current_register = GUID1;
+		return;
+	case GUID1:
+		registers[GUID1] = value;
+		current_register = GUID2;
+		return;
+	case GUID2:
+		registers[GUID2] = value;
+		current_register = GUID3;
+		return;
+	case GUID3:
+		registers[GUID3] = value;
+		current_register = GUID4;
+		return;
+	case GUID4:
+		registers[GUID4] = value;
+		current_register = GUID5;
+		return;
+	case GUID5:
+		registers[GUID5] = value;
+		current_register = GUID6;
+		return;
+	case GUID6:
+		registers[GUID6] = value;
+		current_register = GUID7;
+		return;
+	case GUID7:
+		registers[GUID7] = value;
+		current_register = GUID0;
+		sys_event |= FLASH_UPDATE_EVENT; // MAKE SURE TO UPDATE THE GUID IN FLASH
+		return;
 	case INT_ENABLE:
 		registers[INT_ENABLE] = value;
 		return;
@@ -176,6 +219,30 @@ uint8_t sys_get_register()
 		return registers[TYPE];
 	case STATUS:
 		return registers[STATUS];
+	case GUID0:
+		current_register = GUID1;
+		return registers[GUID0];
+	case GUID1:
+		current_register = GUID2;
+		return registers[GUID1];
+	case GUID2:
+		current_register = GUID3;
+		return registers[GUID2];
+	case GUID3:
+		current_register = GUID4;
+		return registers[GUID3];
+	case GUID4:
+		current_register = GUID5;
+		return registers[GUID4];
+	case GUID5:
+		current_register = GUID6;
+		return registers[GUID5];
+	case GUID6:
+		current_register = GUID7;
+		return registers[GUID6];
+	case GUID7:
+		current_register = GUID0;
+		return registers[GUID7];
 	case INT_ENABLE:
 		return registers[INT_ENABLE];
 	case INTERRUPT:
@@ -199,10 +266,6 @@ int bapi_init()
 	return 0;
 }
 
-//Used to store position in circular buffer
-static uint16_t flash_index = 0;
-static flash_var_t* flash;
-
 void msp430_init(CLOCK_SPEED clock)
 {
 	WDTCTL = WDTPW + WDTHOLD;            // Stop watchdog
@@ -216,27 +279,10 @@ void msp430_init(CLOCK_SPEED clock)
 	DCOCTL = *dco_cal[clock].caldco;
 	BCSCTL3 = LFXT1S_2; //Select VLO
 
-// Set Flash Timing Generator (needs to be between 257 and 476 kHz)
+	// Set Flash Timing Generator (needs to be between 257 and 476 kHz)
 	FCTL2 = FCTL2_CLK_DIV[clock];
-	//Start at 1 since if index should be 0,
-	//	index 1 will be 0xff
-	int i;
-	for (i = 1; i < FLASH_MAX_INDEX; i++)
-	{
-		if ((flash_array[i].slave_addr & 0xff00) > 0)
-		{
-			flash_index = i - 1;
-			break;
-		}
-	}
-	if (i >= FLASH_MAX_INDEX)
-	{
-		flash_index = FLASH_MAX_INDEX - 1;
-	}
 
-	flash = flash_array + flash_index;
-
-// configure Watchdog
+	// configure Watchdog
 	WDTCTL = WDT_CTL;					// Set Watchdog interval
 	IE1 |= WDTIE;					// Enable WDT interrupt
 }
@@ -265,21 +311,6 @@ void seed_rand()
 	srand(seed);
 }
 
-static void project_mem_init()
-{
-// Copy project hash and berry address into local memory
-	proj_key = flash->proj_key;
-	slave_addr = flash->slave_addr;
-
-// If slave address is 0xffff, it was just programmed and should be reset
-	if (slave_addr == 0xffff)
-	{
-		// Immediately clear slave addr and project key
-		slave_addr = proj_key = 0;
-		flash_update_event();
-	}
-}
-
 static void flash_delete_segment(uint16_t segment)
 { // Argument is an address in desired segment
 	uint8_t *flash_ptr;
@@ -293,12 +324,11 @@ static void flash_delete_segment(uint16_t segment)
 	FCTL3 = (FWKEY | LOCK);         // Set lock-bit
 }
 
-#if 0
-static void flash_write_byte(uint16_t address, uint8_t byte)
+static void flash_write_byte(uint8_t *address, uint8_t byte)
 {
 	uint8_t *flash_ptr;
 
-	flash_ptr = (uint8_t*) address; // Initialize pointer
+	flash_ptr = address; // Initialize pointer
 	FCTL3 = FWKEY;// Clear lock-bit
 	FCTL1 = (FWKEY | WRT);// Set write-bit
 	*flash_ptr = byte;// Write byte - CPU hold
@@ -307,8 +337,8 @@ static void flash_write_byte(uint16_t address, uint8_t byte)
 	FCTL1 = FWKEY;// Clear write-bit
 	FCTL3 = (FWKEY | LOCK);// Set lock-bit
 }
-#endif
 
+#if 0
 static void flash_write_word(uint16_t* ptr, uint16_t word)
 {
 	FCTL3 = FWKEY;                  // Clear lock-bit
@@ -319,20 +349,23 @@ static void flash_write_word(uint16_t* ptr, uint16_t word)
 	FCTL1 = FWKEY;                  // Clear write-bit
 	FCTL3 = (FWKEY | LOCK);         // Set lock-bit
 }
+#endif
 
 static void flash_update_event()
 {
 	short sr = __get_SR_register();
 	__disable_interrupt();
-// erase the segment, then you can write to flash
-	if (++flash_index >= FLASH_MAX_INDEX)
-	{
-		flash_delete_segment((uint16_t) flash_array);
-		flash_index = 0;
-	}
-	flash = flash_array + flash_index;
-	flash_write_word(flash->words, slave_addr);
-	flash_write_word(flash->words + 1, proj_key);
+
+	// erase the segment, then you can write to flash
+    flash_delete_segment(flash_segment_addr);
+    flash_write_byte(&flash_guid.guid0, registers[GUID0]);
+    flash_write_byte(&flash_guid.guid1, registers[GUID1]);
+    flash_write_byte(&flash_guid.guid2, registers[GUID2]);
+    flash_write_byte(&flash_guid.guid3, registers[GUID3]);
+    flash_write_byte(&flash_guid.guid4, registers[GUID4]);
+    flash_write_byte(&flash_guid.guid5, registers[GUID5]);
+    flash_write_byte(&flash_guid.guid6, registers[GUID6]);
+    flash_write_byte(&flash_guid.guid7, registers[GUID7]);
 
 	__bis_SR_register(sr & GIE);
 }
