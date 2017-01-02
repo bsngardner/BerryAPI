@@ -43,6 +43,7 @@ typedef enum
 //Important defines
 #define TABLE_SIZE 32
 #define CLOCK _16MHZ
+#define SLEEP_BITS LPM0_bits
 
 //Events
 #define TICK_EVENT 0x01

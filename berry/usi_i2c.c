@@ -325,4 +325,5 @@ __interrupt void USI_TXRX(void)
 	}
 
 	USICTL1 &= ~USIIFG;                  // Clear pending flags
+	__bic_SR_register_on_exit(SLEEP_BITS); // Wake up on exit
 }

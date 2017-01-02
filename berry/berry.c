@@ -128,7 +128,7 @@ void main()
 		if (!sys_event)
 		{
 			// no events pending, enable interrupts and goto sleep (LPM3)
-			__bis_SR_register(LPM0_bits | GIE);
+			__bis_SR_register(SLEEP_BITS | GIE);
 			continue;
 		}
 
@@ -389,7 +389,7 @@ __interrupt void WDT_ISR(void)
 	{
 		tick_count = tick_speed;
 		sys_event |= TICK_EVENT;
-		__bic_SR_register_on_exit(LPM0_bits); // wake up on exit
+		__bic_SR_register_on_exit(SLEEP_BITS); // wake up on exit
 	}
 	return;
 } // end WDT_ISR
